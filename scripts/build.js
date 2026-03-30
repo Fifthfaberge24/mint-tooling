@@ -155,8 +155,9 @@ async function buildExtension() {
     // Write standard output
     fs.writeFileSync(OUTPUT_FILE, finalOutput, 'utf8');
 
+    const info = [];
     const size = (finalOutput.length / 1024).toFixed(2);
-    console.log(`[NORMAL] Standard build successful: ${OUTPUT_FILE} (${size} KB)`);
+    info.push(`[NORMAL] Standard build successful: ${OUTPUT_FILE} (${size} KB)`);
 
     // --- Maximization Step (Prettier) ---
     try {
@@ -169,12 +170,12 @@ async function buildExtension() {
 
       fs.writeFileSync(OUTPUT_MAX_FILE, formatted, 'utf8');
       const maxSize = (formatted.length / 1024).toFixed(2);
-      console.log(`[PRETTY] Maximized output created: ${OUTPUT_MAX_FILE} (${maxSize} KB)`);
+      info.push(`Maximized output created: ${OUTPUT_MAX_FILE} (${maxSize} KB)`);
     } catch (err) {
       if (err.code === 'ERR_MODULE_NOT_FOUND') {
         console.warn('        (Skipping maximization: "prettier" not found)');
       } else {
-        console.warn('[PRETTY] Maximization failed:', err);
+        console.warn('✗ Maximization failed:', err);
       }
     }
 
@@ -189,19 +190,22 @@ async function buildExtension() {
         },
       });
 
-      if (minified.code) {
+      if (minified && minified.code) {
         fs.writeFileSync(OUTPUT_MIN_FILE, minified.code, 'utf8');
         const minSize = (minified.code.length / 1024).toFixed(2);
-        console.log(`[MINIFY] Minified output created: ${OUTPUT_MIN_FILE} (${minSize} KB)`);
+        info.push(`Minified output created: ${OUTPUT_MIN_FILE} (${minSize} KB)`);
+      } else {
+        console.warn('✗ Minification produced no code');
       }
     } catch (err) {
-      if (err.code === 'ERR_MODULE_NOT_FOUND') {
+      if (err && err.code === 'ERR_MODULE_NOT_FOUND') {
         console.warn('        (Skipping minification: "terser" not found)');
       } else {
-        console.warn('[MINIFY] Minification failed:', err);
+        console.warn('✗ Minification failed:', err);
       }
     }
 
+    console.log('✓ Build successful');
     return true;
   } catch (err) {
     console.error('✗ Build failed:', err.message);

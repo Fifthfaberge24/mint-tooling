@@ -296,6 +296,94 @@ jobs:
             });
 
   # ------------------------------------------------------------------
+  # JOB 5: Manifest version bump check
+  # ------------------------------------------------------------------
+  manifest-version-check:
+    name: Check manifest version bump
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Check for src changes without manifest version bump
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const core = require('@actions/core');
+            const cp = require('child_process');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = process.env.GITHUB_SHA;
+            let before = context.payload.before;
+            const after = process.env.GITHUB_SHA;
+            // Guard against missing or all-zero before SHA. Try a fetch and fallbacks so git diff won't throw.
+            if (!before || /^0+$/.test(before)) {
+              core.info('Base SHA missing or zero; attempting git fetch to retrieve base commit');
+              try {
+                cp.execSync('git fetch origin --no-tags --prune --quiet', { encoding: 'utf8' });
+              } catch (e) {
+                core.info('git fetch failed (will try fallbacks)');
+              }
+            }
+            let changed;
+            try {
+              // Prefer explicit range when before is available; otherwise compare against HEAD~1
+              const baseRef = before && !/^0+$/.test(before) ? before : `${after}~1`;
+              changed = cp.execSync(`git diff --name-only ${baseRef}..${after}`, { encoding: 'utf8' }).trim();
+            } catch (e) {
+              core.info('git diff failed; attempting fallback to HEAD~1 and then git ls-files');
+              try {
+                changed = cp.execSync(`git diff --name-only ${after}~1..${after}`, { encoding: 'utf8' }).trim();
+              } catch (e2) {
+                try {
+                  changed = cp.execSync('git ls-files', { encoding: 'utf8' }).trim();
+                } catch (e3) {
+                  core.info('git ls-files failed; assuming no changed files');
+                  changed = '';
+                }
+              }
+            }
+            const files = changed ? changed.split(/\r?\n/).filter(Boolean) : [];
+            const srcChanged = files.some(f => f.startsWith('src/') && f !== 'src/manifest.json');
+            const readManifest = (rev) => {
+              try {
+                return JSON.parse(cp.execSync(`git show ${rev}:src/manifest.json`, { encoding: 'utf8' }));
+              } catch {
+                return null;
+              }
+            };
+            // Resolve an effective baseRef (fall back to after~1 when before is missing/zero)
+            const baseRef = before && !/^0+$/.test(before) ? before : `${after}~1`;
+            const previousVersion = readManifest(baseRef)?.version;
+            const currentVersion = readManifest(after)?.version;
+            const versionBumped = previousVersion !== currentVersion;
+            if (!srcChanged) {
+              core.info(`No src/ changes in range ${baseRef}..${after}; nothing to do.`);
+              return;
+            }
+            if (versionBumped) {
+              core.info('Manifest version changed in this push; nothing to do.');
+              return;
+            }
+            const title = 'Bug: [mint-auto] src/* changed without manifest version bump';
+            const issues = await github.paginate(github.rest.issues.listForRepo, {owner, repo, state: 'open'});
+            if (issues.some(i => !i.pull_request && i.title === title)) {
+              core.info('An open issue already exists; skipping creation.');
+              return;
+            }
+            const compareUrl = `https://github.com/${owner}/${repo}/compare/${baseRef}...${after}`;
+            const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
+            const body = `The pushed commits in range ${baseRef}..${after} updated files under src/ but did not update src/manifest.json version.\n\nCompare: ${compareUrl}\n\nLatest commit: ${commitUrl}\n\nPlease ensure the extension version in src/manifest.json is bumped when publishing changes.`;
+            await github.rest.issues.create({owner, repo, title, body, labels: ['ci']});
+
+
+  # ------------------------------------------------------------------
   # JOB 5: Dependabot Auto-Approve
   # ------------------------------------------------------------------
   dependabot-approve:

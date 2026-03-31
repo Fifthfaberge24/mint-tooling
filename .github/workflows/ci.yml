@@ -315,7 +315,6 @@ jobs:
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
-            const core = require('@actions/core');
             const cp = require('child_process');
             const owner = context.repo.owner;
             const repo = context.repo.repo;

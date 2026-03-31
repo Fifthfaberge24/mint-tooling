@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import requireScratchTranslate from './eslint-rules/require-scratch-translate.js';
 
 export default [
   {
@@ -36,6 +37,16 @@ export default [
         ...globals.browser,
         Scratch: 'readonly',
       },
+    },
+    plugins: {
+      local: {
+        rules: {
+          'require-scratch-translate': requireScratchTranslate,
+        },
+      },
+    },
+    rules: {
+      'local/require-scratch-translate': 'warn',
     },
   },
   {

@@ -19,7 +19,7 @@ class TurboWarpExtension {
   getInfo() {
     return {
       id: 'myTurboWarpExtension',
-      name: 'My Extension',
+      name: Scratch.translate('My Extension'),
       color1: '#4CAF50',
       color2: '#45a049',
       color3: '#3d8b40',
@@ -29,12 +29,12 @@ class TurboWarpExtension {
         {
           opcode: 'helloWorld',
           blockType: 'reporter',
-          text: 'hello world',
+          text: Scratch.translate('hello world'),
         },
         {
           opcode: 'add',
           blockType: 'reporter',
-          text: '[A] + [B]',
+          text: Scratch.translate('[A] + [B]'),
           arguments: {
             A: {
               type: 'number',
@@ -49,7 +49,7 @@ class TurboWarpExtension {
         {
           opcode: 'colorBlock',
           blockType: 'reporter',
-          text: 'selected color [COLOR]',
+          text: Scratch.translate('selected color [COLOR]'),
           arguments: {
             COLOR: {
               type: 'color',
@@ -60,7 +60,7 @@ class TurboWarpExtension {
         {
           opcode: 'sayHello',
           blockType: 'reporter',
-          text: 'say hello to [NAME]',
+          text: Scratch.translate('say hello to [NAME]'),
           arguments: {
             NAME: {
               type: 'string',

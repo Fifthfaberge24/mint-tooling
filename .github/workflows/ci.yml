@@ -381,7 +381,6 @@ jobs:
             const body = `The pushed commits in range ${baseRef}..${after} updated files under src/ but did not update src/manifest.json version.\n\nCompare: ${compareUrl}\n\nLatest commit: ${commitUrl}\n\nPlease ensure the extension version in src/manifest.json is bumped when publishing changes.`;
             await github.rest.issues.create({owner, repo, title, body, labels: ['ci']});
 
-
   # ------------------------------------------------------------------
   # JOB 5: Dependabot Auto-Approve
   # ------------------------------------------------------------------

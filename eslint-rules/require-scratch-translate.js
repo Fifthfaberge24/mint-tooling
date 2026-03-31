@@ -21,7 +21,11 @@ export default {
     },
   },
   create(context) {
-
+    /**
+     * Determines whether an AST node represents a plain string literal.
+     * @param {object} node - The AST node to inspect.
+     * @returns {boolean} `true` if the node is a string `Literal` or a `TemplateLiteral` with no expressions, `false` otherwise.
+     */
     function isPlainStringNode(node) {
       return (
         node &&
@@ -47,7 +51,13 @@ export default {
     return {
       Property(node) {
         const keyNode = node.key;
-        const keyName = keyNode && (keyNode.type === 'Identifier' ? keyNode.name : keyNode.type === 'Literal' ? keyNode.value : null);
+        const keyName =
+          keyNode &&
+          (keyNode.type === 'Identifier'
+            ? keyNode.name
+            : keyNode.type === 'Literal'
+              ? keyNode.value
+              : null);
         if (!keyName) return;
         if (keyName !== 'name' && keyName !== 'text') return;
 
@@ -75,11 +85,22 @@ export default {
             allowed = true;
           } else if (grand.type === 'Property') {
             const gk = grand.key;
-            const gkName = gk && (gk.type === 'Identifier' ? gk.name : gk.type === 'Literal' ? gk.value : null);
-            if (['blocks', 'extensions', 'extension', 'manifest', 'info', 'descriptor'].includes(gkName)) allowed = true;
+            const gkName =
+              gk && (gk.type === 'Identifier' ? gk.name : gk.type === 'Literal' ? gk.value : null);
+            if (
+              ['blocks', 'extensions', 'extension', 'manifest', 'info', 'descriptor'].includes(
+                gkName
+              )
+            )
+              allowed = true;
           } else if (grand.type === 'VariableDeclarator') {
             const id = grand.id;
-            if (id && id.type === 'Identifier' && ['blocks', 'descriptor', 'info', 'extension', 'manifest'].includes(id.name)) allowed = true;
+            if (
+              id &&
+              id.type === 'Identifier' &&
+              ['blocks', 'descriptor', 'info', 'extension', 'manifest'].includes(id.name)
+            )
+              allowed = true;
           } else if (grand.type === 'AssignmentExpression') {
             allowed = true;
           }
@@ -109,5 +130,4 @@ export default {
       },
     };
   },
-
 };

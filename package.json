@@ -1,13 +1,14 @@
 {
   "type": "module",
   "name": "minttw",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A simple and painless custom TurboWarp extension development platform, powered by bundling.",
   "main": "build/extension.js",
   "scripts": {
     "build": "node scripts/build.js",
     "build:prod": "node scripts/build.js --production",
     "watch": "node scripts/build.js --watch",
+    "init": "node scripts/init.js",
     "lint": "eslint src/",
     "lint:fix": "eslint --fix src/",
     "format": "prettier --write src/",

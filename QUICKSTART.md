@@ -11,8 +11,8 @@ You can get your extension up in a few minutes!
 2. Run `npm run fullstack`.
 3. Copy the file in `build/extension.js`.
 4. Open TurboWarp and enter the custom extension import screen.
-5. Choose "Text" *(or "File" if you have it downloaded)*, then paste `build/extension.js`'s content into the box below. Click "Run unsandboxed" and "Load".
-6. You're done! If the extension does not add any blocks to your palette, check your console by pressing `ctrl + shift + i` and clicking "Console". If there are any errors after the string of random characters you'll see after importing the extension, contact the repository's developer *(us if you're running this from `triflare/mint-tooling`)*.
+5. Choose "Text" _(or "File" if you have it downloaded)_, then paste `build/extension.js`'s content into the box below. Click "Run unsandboxed" and "Load".
+6. You're done! If the extension does not add any blocks to your palette, check your console by pressing `ctrl + shift + i` and clicking "Console". If there are any errors after the string of random characters you'll see after importing the extension, contact the repository's developer _(us if you're running this from `triflare/mint-tooling`)_.
 
 It's that simple!
 

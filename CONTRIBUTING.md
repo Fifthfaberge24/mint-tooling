@@ -13,13 +13,13 @@
 
 ## Understanding the Build Script
 
-Mint's build script is something called a "bundler", which means it concatenates *(or combines)* a set of files into one. In Mint's case, the files it bundles are called "modules" or "ES modules". If you know about Webpack, you'll know exactly what we mean.
+Mint's build script is something called a "bundler", which means it concatenates _(or combines)_ a set of files into one. In Mint's case, the files it bundles are called "modules" or "ES modules". If you know about Webpack, you'll know exactly what we mean.
 
 The build process outputs three files:
 
 1. `build/extension.js`,
-2. `build/min.extension.js` *(if you have `terser`)*, and
-3. `build/pretty.extension.js` *(if you have `prettier`)*.
+2. `build/min.extension.js` _(if you have `terser`)_, and
+3. `build/pretty.extension.js` _(if you have `prettier`)_.
 
 If you ran `npm ci` before building, you will have installed `prettier` and `terser` already. If not, `min.extension.js` and `pretty.extension.js` will not appear. No problem!
 
@@ -33,7 +33,7 @@ If you ran `npm ci` before building, you will have installed `prettier` and `ter
 
 ### Using LLMs to Generate Extensions
 
-If AI code is used, it should meet or exceed human standards. We have both humans *(Triflare's dedicated reviewer team)* and AIs *(CodeRabbit & GitHub Copilot)* review all Pull requests to ensure they meet this standard.
+If AI code is used, it should meet or exceed human standards. We have both humans _(Triflare's dedicated reviewer team)_ and AIs _(CodeRabbit & GitHub Copilot)_ review all Pull requests to ensure they meet this standard.
 
 > [!WARNING]
 >

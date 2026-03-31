@@ -9,7 +9,7 @@
 
 > [!INFO]
 >
-> "Legacy/pre-versioning" is qualified as any version of the Mint tooling before versioning was taken into account *(before Mint started incrementing their version in `package.json`)*.
+> "Legacy/pre-versioning" is qualified as any version of the Mint tooling before versioning was taken into account _(before Mint started incrementing their version in `package.json`)_.
 
 ## Reporting a Security Vulnerability
 

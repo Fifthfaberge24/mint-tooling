@@ -29,7 +29,9 @@ function toCamelCase(s) {
       .replace(/[^a-zA-Z0-9 ]+/g, ' ')
       .split(/\s+/)
       .filter(Boolean)
-      .map((word, i) => (i === 0 ? word.toLowerCase() : (word[0]?.toUpperCase() || '') + word.slice(1)))
+      .map((word, i) =>
+        i === 0 ? word.toLowerCase() : (word[0]?.toUpperCase() || '') + word.slice(1)
+      )
       .join('')
       .replace(/[^a-zA-Z0-9]/g, '') || 'extensionId'
   );

@@ -89,11 +89,85 @@ async function buildExtension() {
     const header = generateHeader(manifest);
     const sourceFiles = getSourceFiles();
 
+    // --- Bundle assets from src/assets as base64 data URIs ---
+    let assetsCode = '';
+    let assetsMap = {};
+    try {
+      const assetsDir = path.join(SRC_DIR, 'assets');
+      if (fs.existsSync(assetsDir)) {
+        const walk = dir =>
+          fs
+            .readdirSync(dir, { withFileTypes: true })
+            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+            .flatMap(d => {
+              const res = path.join(dir, d.name);
+              return d.isDirectory() ? walk(res) : [res];
+            });
+        const assetFiles = walk(assetsDir).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+        if (assetFiles.length) {
+          const mimeMap = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.ico': 'image/x-icon',
+            '.bmp': 'image/bmp',
+            '.ttf': 'font/ttf',
+            '.otf': 'font/otf',
+            '.woff': 'font/woff',
+            '.woff2': 'font/woff2',
+            '.json': 'application/json',
+            '.txt': 'text/plain',
+          };
+          const assets = {};
+          assetFiles.forEach(f => {
+            const rel = path.relative(assetsDir, f).replace(/\\/g, '/');
+            const ext = path.extname(f).toLowerCase();
+            const mime = mimeMap[ext] || 'application/octet-stream';
+            const data = fs.readFileSync(f);
+            const b64 = data.toString('base64');
+            assets[rel] = `data:${mime};base64,${b64}`;
+          });
+
+          // Generate JS code that defines functions for each asset and a getter
+          const makeSafe = name =>
+            name.replace(/[^a-zA-Z0-9_$]/g, '_').replace(/^[0-9]/, m => '_' + m);
+          let gen = '  // --- Embedded assets ---\n';
+          Object.keys(assets)
+            .sort()
+            .forEach((key, idx, arr) => {
+              const fn = '__mint_asset_' + makeSafe(key) + '_' + idx;
+              gen += `  function ${fn}() { return ${JSON.stringify(assets[key])}; }\n`;
+            });
+          gen += '\n  const __mint_assets = {\n';
+          Object.keys(assets)
+            .sort()
+            .forEach((key, idx, arr) => {
+              const fn = '__mint_asset_' + makeSafe(key) + '_' + idx;
+              gen += `    ${JSON.stringify(key)}: ${fn}${idx < arr.length - 1 ? ',' : ''}\n`;
+            });
+          gen += '  };\n\n';
+          gen +=
+            '  function __mint_getAsset(name) { return __mint_assets[name] ? __mint_assets[name]() : undefined; }\n\n';
+          assetsCode = gen;
+
+          // Also expose the assets map for build-time replacements
+          assetsMap = assets;
+        }
+      }
+    } catch (err) {
+      console.warn('Asset bundling failed:', err && err.message ? err.message : err);
+      assetsCode = '';
+    }
+
     let output = header;
 
     // Add IIFE wrapper that takes Scratch as parameter
     output += '(function (Scratch) {\n';
     output += '  "use strict";\n\n';
+    output += assetsCode || '';
 
     // Concatenate all source files
     sourceFiles.forEach(file => {
@@ -110,6 +184,18 @@ async function buildExtension() {
 
       // 2. Remove 'export ' prefix
       content = content.replace(/^export\s+/gm, '');
+
+      // 3. Replace only explicit __ASSET__('path') placeholders with literal data URIs
+      if (assetsMap && Object.keys(assetsMap).length) {
+        content = content.replace(/__ASSET__\(\s*(['"])([^'\"]+)\1\s*\)/g, (m, q, key) => {
+          const val = assetsMap[key];
+          if (val && typeof val === 'string') {
+            return JSON.stringify(val);
+          }
+          // Fail fast on unresolved asset references so build aborts
+          throw new Error(`Missing asset key: ${key}`);
+        });
+      }
 
       // Indent the content for the IIFE
       const indentedContent = content

@@ -1,6 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
-import requireScratchTranslate from './eslint-rules/require-scratch-translate.js';
+import requireScratchTranslate from './eslint/require-scratch-translate.js';
 
 export default [
   {

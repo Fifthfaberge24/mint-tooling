@@ -1,3 +1,4 @@
+/* global __mint_getAsset */
 /**
  * Core Extension Module
  * This is the main extension class that Scratch will register
@@ -23,8 +24,10 @@ class TurboWarpExtension {
       color1: '#4CAF50',
       color2: '#45a049',
       color3: '#3d8b40',
-      menuIconURI: '',
-      blockIconURI: '',
+      menuIconURI:
+        (typeof __mint_getAsset === 'function' && __mint_getAsset('icons/menu.png')) || '',
+      blockIconURI:
+        (typeof __mint_getAsset === 'function' && __mint_getAsset('icons/block.png')) || '',
       blocks: [
         {
           opcode: 'helloWorld',

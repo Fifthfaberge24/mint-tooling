@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { validateOpcodeSignatures } from './validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -177,6 +178,17 @@ async function buildExtension() {
     const manifest = getManifest();
     const header = generateHeader(manifest);
     const sourceFiles = getSourceFiles();
+
+    // Validate opcode-to-method signatures before emitting any artifacts
+    const validationErrors = validateOpcodeSignatures();
+    if (validationErrors.length > 0) {
+      console.error('✗ Opcode validation failed:');
+      for (const err of validationErrors) {
+        console.error(err);
+      }
+      return false;
+    }
+    console.log('✓ Opcode signatures valid');
 
     // --- Bundle assets from src/assets as base64 data URIs ---
     let assetsCode = '';
@@ -454,7 +466,11 @@ const productionMode =
 // Execute
 (async () => {
   // Always run the initial build
-  await buildExtension();
+  const success = await buildExtension();
+
+  if (!success && !watchMode) {
+    process.exit(1);
+  }
 
   if (watchMode) {
     watchFiles();

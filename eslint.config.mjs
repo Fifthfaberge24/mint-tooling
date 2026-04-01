@@ -46,7 +46,7 @@ export default [
       },
     },
     rules: {
-      'local/require-scratch-translate': 'warn',
+      'local/require-scratch-translate': 'error',
     },
   },
   {

@@ -85,7 +85,7 @@ function cmdList() {
   console.log(sep);
   for (const r of rows) {
     console.log(
-      `| ${pad(r.rel, colName)} | ${pad(r.mime, colType)} | ${pad(formatBytes(r.size), colSize)} |`,
+      `| ${pad(r.rel, colName)} | ${pad(r.mime, colType)} | ${pad(formatBytes(r.size), colSize)} |`
     );
   }
   console.log(sep);
@@ -155,7 +155,7 @@ function findReferences(assetName) {
     .map(f => path.join(SRC_DIR, f));
 
   const escaped = assetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp("__ASSET__\\s*\\(\\s*(['\"])" + escaped + "\\1\\s*\\)");
+  const pattern = new RegExp('__ASSET__\\s*\\(\\s*([\'"])' + escaped + '\\1\\s*\\)');
 
   return jsFiles.filter(f => pattern.test(fs.readFileSync(f, 'utf8')));
 }

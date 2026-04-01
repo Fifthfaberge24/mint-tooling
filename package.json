@@ -16,7 +16,6 @@
     "lint:fix": "eslint --fix src/",
     "format": "prettier --write src/",
     "validate": "node scripts/validate.js",
-
     "asset:list": "node scripts/asset.js list",
     "asset:add": "node scripts/asset.js add",
     "asset:remove": "node scripts/asset.js remove",

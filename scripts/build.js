@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { validateOpcodeSignatures } from './validate.js';
+import { MIME_MAP } from './mime-map.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -289,27 +290,11 @@ async function buildExtension() {
             });
         const assetFiles = walk(assetsDir).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
         if (assetFiles.length) {
-          const mimeMap = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.svg': 'image/svg+xml',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.ico': 'image/x-icon',
-            '.bmp': 'image/bmp',
-            '.ttf': 'font/ttf',
-            '.otf': 'font/otf',
-            '.woff': 'font/woff',
-            '.woff2': 'font/woff2',
-            '.json': 'application/json',
-            '.txt': 'text/plain',
-          };
           const assets = {};
           assetFiles.forEach(f => {
             const rel = path.relative(assetsDir, f).replace(/\\/g, '/');
             const ext = path.extname(f).toLowerCase();
-            const mime = mimeMap[ext] || 'application/octet-stream';
+            const mime = MIME_MAP[ext] || 'application/octet-stream';
             const data = fs.readFileSync(f);
             const b64 = data.toString('base64');
             assets[rel] = `data:${mime};base64,${b64}`;

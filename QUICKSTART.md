@@ -16,6 +16,33 @@ You can get your extension up in a few minutes!
 
 It's that simple!
 
+# Local Preview Server (faster iteration)
+
+Instead of copying and pasting the built extension on every change, you can run a local HTTP server that lets TurboWarp reload the extension directly from your machine.
+
+1. Run `npm run serve`.  
+   This builds the extension, starts watching `src/` for changes, and serves `build/` over HTTP at `http://127.0.0.1:3000/`.
+
+2. In TurboWarp, open the custom extension screen and choose **URL**, then enter:
+   ```text
+   http://127.0.0.1:3000/extension.js
+   ```
+   Click **Run unsandboxed** and **Load**.
+
+3. When you save a source file, Mint rebuilds automatically.  
+   To reload the updated extension in TurboWarp, remove and re-add it via the custom extension screen using the same URL.
+
+> [!NOTE]
+>
+> The server binds to `127.0.0.1` (localhost) and is not reachable from other machines.  
+> To use a different port, set the `PORT` environment variable before starting the server:
+>
+> ```text
+> PORT=8080 npm run serve
+> ```
+
+
+
 # Build Your Extension
 
 > [!INFO]

@@ -48,3 +48,18 @@ Instead of copying and pasting the built extension on every change, you can run 
 > [!INFO]
 >
 > We have since removed this section to remove the overhead of updating this field if TurboWarp's extension system changes. **If you want guidance, see [TurboWarp's documentation](https://docs.turbowarp.org/development/extensions/introduction).**
+
+# Choosing the Right Build Output
+
+Every successful build produces at least `build/extension.js` and a `build/BUILD_REPORT.md` that summarises the available artifacts.  When optional tools are installed, additional variants may be created:
+
+| File | Best for |
+| --- | --- |
+| `extension.js` | General development and iteration |
+| `min.extension.js` | Production deployment — smallest download size _(only generated when `terser` is available)_ |
+| `pretty.extension.js` | Debugging — fully formatted, easy to read _(only generated when `prettier` is available)_ |
+
+Run `npm run build:recommended` (or plain `npm run build`) to generate the report.  
+Open `build/BUILD_REPORT.md` after the build completes to see the sizes of each artifact and a **tailored recommendation** for your specific bundle.  For optional artifacts that could not be built, the report will list them as **"not generated"**.
+
+> **Rule of thumb:** if your standard build exceeds 50 KB, `BUILD_REPORT.md` will recommend `min.extension.js` for production (when available).  For step-through debugging always reach for `pretty.extension.js` if it was generated.

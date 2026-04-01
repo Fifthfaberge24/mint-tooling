@@ -9,6 +9,7 @@
     "build:prod": "node scripts/build.js --production",
     "build:recommended": "node scripts/build.js",
     "watch": "node scripts/build.js --watch",
+    "watch:notify": "node scripts/build.js --watch --notify",
     "serve": "node scripts/serve.js",
     "init": "node scripts/init.js",
     "lint": "eslint src/",

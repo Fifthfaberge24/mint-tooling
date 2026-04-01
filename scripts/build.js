@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execFile } from 'child_process';
 import { validateOpcodeSignatures } from './validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,13 +18,80 @@ const OUTPUT_REPORT_FILE = path.join(BUILD_DIR, 'BUILD_REPORT.md');
 // Bundle size threshold (in bytes) above which the minified output is recommended for production
 const RECOMMEND_MIN_THRESHOLD_BYTES = 50 * 1024; // 50 KB
 
+// Width (in characters) of the failure/recovery banner lines
+const BANNER_WIDTH = 62;
+
+// Check for --watch / --notify / --production flags early so helper functions can read them
+const watchMode = process.argv.includes('--watch');
+const notifyMode = process.argv.includes('--notify');
+const productionMode =
+  process.argv.includes('--production') || process.env.NODE_ENV === 'production';
+
 // --- Build State Guard ---
 let isBuilding = false;
 let pendingBuild = false;
 
+// Track whether the last build failed so a recovery message can be shown
+let lastBuildFailed = false;
+
 // Create build directory if it doesn't exist
 if (!fs.existsSync(BUILD_DIR)) {
   fs.mkdirSync(BUILD_DIR, { recursive: true });
+}
+
+/**
+ * Send an optional desktop notification (cross-platform best-effort).
+ * Only fires when the --notify flag is present.
+ * @param {string} title
+ * @param {string} message
+ */
+function sendNotification(title, message) {
+  if (!notifyMode) return;
+
+  if (process.platform === 'darwin') {
+    const script = `display notification "${message}" with title "${title}"`;
+    execFile('osascript', ['-e', script], () => {});
+  } else if (process.platform === 'win32') {
+    const psScript =
+      `[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime] | Out-Null;` +
+      `$t = [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType=WindowsRuntime]::new();` +
+      `$t.LoadXml('<toast><visual><binding template="ToastText02"><text id="1">${title}</text><text id="2">${message}</text></binding></visual></toast>');` +
+      `[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Mint').Show([Windows.UI.Notifications.ToastNotification]::new($t))`;
+    execFile('powershell', ['-command', psScript], () => {});
+  } else {
+    execFile('notify-send', [title, message], () => {});
+  }
+}
+
+/**
+ * Print a highlighted, prominent failure banner to stderr.
+ * @param {string} message - Root cause description.
+ */
+function printFailureBanner(message) {
+  const bar = '═'.repeat(BANNER_WIDTH);
+
+  // Calculate content width (account for visual prefix/suffix: 2 spaces on each side = 4 chars)
+  const headerLabel = '✗ BUILD FAILED';
+  const visiblePrefixSuffixLength = 4; // 2 spaces before + 2 spaces after
+  const contentWidth = BANNER_WIDTH - visiblePrefixSuffixLength;
+
+  // Center the label within the content width
+  const totalPadding = contentWidth - headerLabel.length;
+  const leftPadding = Math.floor(totalPadding / 2);
+  const rightPadding = totalPadding - leftPadding;
+  const paddedHeader = ' '.repeat(leftPadding) + headerLabel + ' '.repeat(rightPadding);
+
+  console.error(`\x1b[41m\x1b[97m\x1b[1m  ${paddedHeader}  \x1b[0m`);
+  console.error(`\x1b[31m${bar}\x1b[0m`);
+  console.error(`\x1b[31m  Root cause: ${message}\x1b[0m`);
+  console.error(`\x1b[31m${bar}\x1b[0m`);
+}
+
+/**
+ * Print a highlighted recovery banner when a build succeeds after a failure.
+ */
+function printRecoveryBanner() {
+  console.log(`\x1b[42m\x1b[30m\x1b[1m  ✓ BUILD RECOVERED — errors resolved, build is passing again  \x1b[0m`);
 }
 
 /**
@@ -401,9 +469,16 @@ async function buildExtension() {
     generateBuildReport(artifactSizes);
 
     console.log('✓ Build successful');
+    if (lastBuildFailed) {
+      printRecoveryBanner();
+      sendNotification('Mint Build', 'Build recovered — errors resolved.');
+    }
+    lastBuildFailed = false;
     return true;
   } catch (err) {
-    console.error('✗ Build failed:', err.message);
+    printFailureBanner(err.message);
+    sendNotification('Mint Build Failed', err.message);
+    lastBuildFailed = true;
     return false;
   }
 }
@@ -457,11 +532,6 @@ async function watchFiles() {
     guardedBuild();
   });
 }
-
-// Check for --watch flag
-const watchMode = process.argv.includes('--watch');
-const productionMode =
-  process.argv.includes('--production') || process.env.NODE_ENV === 'production';
 
 // Execute
 (async () => {

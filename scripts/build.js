@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { validateOpcodeSignatures } from './validate.js';
+import { validateAssetReferences } from './validate-assets.js';
 import { MIME_MAP } from './mime-map.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -274,6 +275,20 @@ async function buildExtension() {
     }
     console.log('✓ Opcode signatures valid');
 
+    // Validate asset references before bundling
+    const { errors: assetErrors, warnings: assetWarnings } = validateAssetReferences(SRC_DIR);
+    for (const w of assetWarnings) {
+      console.warn(w);
+    }
+    if (assetErrors.length > 0) {
+      console.error('✗ Asset reference validation failed:');
+      for (const err of assetErrors) {
+        console.error(err);
+      }
+      return false;
+    }
+    console.log('✓ Asset references valid');
+
     // --- Bundle assets from src/assets as base64 data URIs ---
     let assetsCode = '';
     let assetsMap = {};
@@ -357,7 +372,9 @@ async function buildExtension() {
       // 3. Replace only explicit __ASSET__('path') placeholders with literal data URIs
       if (assetsMap && Object.keys(assetsMap).length) {
         content = content.replace(/__ASSET__\(\s*(['"])([^'\"]+)\1\s*\)/g, (m, q, key) => {
-          const val = assetsMap[key];
+          // Normalise lookup key to use POSIX-style separators and remove redundant segments
+          const lookupKey = path.posix.normalize(key.replace(/\\/g, '/'));
+          const val = assetsMap[lookupKey];
           if (val && typeof val === 'string') {
             return JSON.stringify(val);
           }

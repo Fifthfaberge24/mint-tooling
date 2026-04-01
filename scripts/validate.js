@@ -94,15 +94,13 @@ function parseBlockDefinitions(filePath) {
 
     // Segment spans from this opcode to the start of the next (or a fixed lookahead).
     const segStart = match.index;
-    const segEnd = allMatches[idx + 1]
-      ? allMatches[idx + 1].index
-      : content.length;
+    const segEnd = allMatches[idx + 1] ? allMatches[idx + 1].index : content.length;
     const segment = content.slice(segStart, segEnd);
 
     // Extract argument placeholders from block text, e.g. [A], [B], [NAME].
     // Use alternation to enforce matching opening/closing quote characters.
     const textMatch = segment.match(
-      /\btext:\s*(?:Scratch\.translate\s*\(\s*)?(?:'([^'\n]*)'|"([^"\n]*)"|`([^`\n]*)`)/,
+      /\btext:\s*(?:Scratch\.translate\s*\(\s*)?(?:'([^'\n]*)'|"([^"\n]*)"|`([^`\n]*)`)/
     );
     const rawText = textMatch ? (textMatch[1] ?? textMatch[2] ?? textMatch[3] ?? '') : '';
     const textArgs = [...rawText.matchAll(/\[([a-zA-Z_][a-zA-Z0-9_]*)\]/g)].map(m => m[1]);
@@ -183,7 +181,7 @@ export function validateOpcodeSignatures(srcDir = SRC_DIR) {
       // 1. Every opcode must have a corresponding implementation method
       if (!fileMethods.has(opcode)) {
         errors.push(
-          `  ✗ [${file}] Block opcode '${opcode}' has no corresponding implementation method in the extension class.`,
+          `  ✗ [${file}] Block opcode '${opcode}' has no corresponding implementation method in the extension class.`
         );
         continue;
       }
@@ -195,7 +193,7 @@ export function validateOpcodeSignatures(srcDir = SRC_DIR) {
       for (const arg of textArgs) {
         if (!argKeySet.has(arg)) {
           errors.push(
-            `  ✗ [${file}] Block '${opcode}': argument '[${arg}]' is referenced in block text but not declared in arguments.`,
+            `  ✗ [${file}] Block '${opcode}': argument '[${arg}]' is referenced in block text but not declared in arguments.`
           );
         }
       }
@@ -203,7 +201,7 @@ export function validateOpcodeSignatures(srcDir = SRC_DIR) {
       for (const key of argKeys) {
         if (!textArgSet.has(key)) {
           errors.push(
-            `  ✗ [${file}] Block '${opcode}': argument '${key}' is declared in arguments but not referenced in block text.`,
+            `  ✗ [${file}] Block '${opcode}': argument '${key}' is declared in arguments but not referenced in block text.`
           );
         }
       }

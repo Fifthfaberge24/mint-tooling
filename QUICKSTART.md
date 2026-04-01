@@ -24,9 +24,11 @@ Instead of copying and pasting the built extension on every change, you can run 
    This builds the extension, starts watching `src/` for changes, and serves `build/` over HTTP at `http://127.0.0.1:3000/`.
 
 2. In TurboWarp, open the custom extension screen and choose **URL**, then enter:
+
    ```text
    http://127.0.0.1:3000/extension.js
    ```
+
    Click **Run unsandboxed** and **Load**.
 
 3. When you save a source file, Mint rebuilds automatically.  
@@ -41,8 +43,6 @@ Instead of copying and pasting the built extension on every change, you can run 
 > PORT=8080 npm run serve
 > ```
 
-
-
 # Build Your Extension
 
 > [!INFO]
@@ -51,15 +51,15 @@ Instead of copying and pasting the built extension on every change, you can run 
 
 # Choosing the Right Build Output
 
-Every successful build produces at least `build/extension.js` and a `build/BUILD_REPORT.md` that summarises the available artifacts.  When optional tools are installed, additional variants may be created:
+Every successful build produces at least `build/extension.js` and a `build/BUILD_REPORT.md` that summarises the available artifacts. When optional tools are installed, additional variants may be created:
 
-| File | Best for |
-| --- | --- |
-| `extension.js` | General development and iteration |
-| `min.extension.js` | Production deployment — smallest download size _(only generated when `terser` is available)_ |
-| `pretty.extension.js` | Debugging — fully formatted, easy to read _(only generated when `prettier` is available)_ |
+| File                  | Best for                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `extension.js`        | General development and iteration                                                            |
+| `min.extension.js`    | Production deployment — smallest download size _(only generated when `terser` is available)_ |
+| `pretty.extension.js` | Debugging — fully formatted, easy to read _(only generated when `prettier` is available)_    |
 
 Run `npm run build:recommended` (or plain `npm run build`) to generate the report.  
-Open `build/BUILD_REPORT.md` after the build completes to see the sizes of each artifact and a **tailored recommendation** for your specific bundle.  For optional artifacts that could not be built, the report will list them as **"not generated"**.
+Open `build/BUILD_REPORT.md` after the build completes to see the sizes of each artifact and a **tailored recommendation** for your specific bundle. For optional artifacts that could not be built, the report will list them as **"not generated"**.
 
-> **Rule of thumb:** if your standard build exceeds 50 KB, `BUILD_REPORT.md` will recommend `min.extension.js` for production (when available).  For step-through debugging always reach for `pretty.extension.js` if it was generated.
+> **Rule of thumb:** if your standard build exceeds 50 KB, `BUILD_REPORT.md` will recommend `min.extension.js` for production (when available). For step-through debugging always reach for `pretty.extension.js` if it was generated.

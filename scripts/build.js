@@ -91,7 +91,9 @@ function printFailureBanner(message) {
  * Print a highlighted recovery banner when a build succeeds after a failure.
  */
 function printRecoveryBanner() {
-  console.log(`\x1b[42m\x1b[30m\x1b[1m  ✓ BUILD RECOVERED — errors resolved, build is passing again  \x1b[0m`);
+  console.log(
+    `\x1b[42m\x1b[30m\x1b[1m  ✓ BUILD RECOVERED — errors resolved, build is passing again  \x1b[0m`
+  );
 }
 
 /**
@@ -164,7 +166,8 @@ function getSourceFiles() {
  * @param {{ standard: number|null, min: number|null, pretty: number|null }} sizes - byte counts for each artifact (null = not generated)
  */
 function generateBuildReport(sizes) {
-  const formatBytes = bytes => (bytes !== null ? `${(bytes / 1024).toFixed(2)} KB` : '_not generated_');
+  const formatBytes = bytes =>
+    bytes !== null ? `${(bytes / 1024).toFixed(2)} KB` : '_not generated_';
 
   const standardBytes = sizes.standard;
   const minAvailable = sizes.min !== null;
@@ -175,14 +178,26 @@ function generateBuildReport(sizes) {
       : '`extension.js`';
 
   const rows = [
-    ['`extension.js`', formatBytes(sizes.standard), 'Standard build — balanced output, suitable for most uses'],
-    ['`min.extension.js`', formatBytes(sizes.min), 'Minified build — smallest size, best for production deployment'],
-    ['`pretty.extension.js`', formatBytes(sizes.pretty), 'Formatted build — human-readable, best for debugging'],
+    [
+      '`extension.js`',
+      formatBytes(sizes.standard),
+      'Standard build — balanced output, suitable for most uses',
+    ],
+    [
+      '`min.extension.js`',
+      formatBytes(sizes.min),
+      'Minified build — smallest size, best for production deployment',
+    ],
+    [
+      '`pretty.extension.js`',
+      formatBytes(sizes.pretty),
+      'Formatted build — human-readable, best for debugging',
+    ],
   ];
 
   const colWidths = rows.reduce(
     (acc, row) => row.map((cell, i) => Math.max(acc[i], cell.length)),
-    ['File'.length, 'Size'.length, 'Description'.length],
+    ['File'.length, 'Size'.length, 'Description'.length]
   );
 
   const pad = (str, width) => str + ' '.repeat(width - str.length);
@@ -190,9 +205,7 @@ function generateBuildReport(sizes) {
   const header = colWidths.map((w, i) => pad(['File', 'Size', 'Description'][i], w)).join(' | ');
   const tableRows = rows.map(row => row.map((cell, i) => pad(cell, colWidths[i])).join(' | '));
 
-  const table = [`| ${header} |`, `| ${separator} |`, ...tableRows.map(r => `| ${r} |`)].join(
-    '\n',
-  );
+  const table = [`| ${header} |`, `| ${separator} |`, ...tableRows.map(r => `| ${r} |`)].join('\n');
 
   const report = [
     '# Build Report',
@@ -222,7 +235,9 @@ function generateBuildReport(sizes) {
     '| Scenario | Recommended file |',
     '| --- | --- |',
     '| Deploying / sharing the extension | ' + recommendProd + ' |',
-    '| Debugging or reading the source | `pretty.extension.js`' + (!prettyAvailable ? ' _(install `prettier` to generate)_' : '') + ' |',
+    '| Debugging or reading the source | `pretty.extension.js`' +
+      (!prettyAvailable ? ' _(install `prettier` to generate)_' : '') +
+      ' |',
     '| General development iteration | `extension.js` |',
     '',
     '---',

@@ -6,7 +6,7 @@
  */
 
 // Import colorBlock and sayHello from 02-example-module.js
-import { colorBlock, sayHello as sayHelloImpl } from './02-example-module.js';
+import { colorBlock, sayHelloImpl } from './02-example-module.js';
 
 class TurboWarpExtension {
   constructor() {

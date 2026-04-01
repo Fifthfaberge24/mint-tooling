@@ -42,3 +42,79 @@ If AI code is used, it should meet or exceed human standards. We have both human
 ## Quality Over All
 
 Triflare believes in quality over quantity. We want to keep our tools opinionated, so we will keep ensuring quality to keep it that way. For example, our goal is to turn Mint into something that all TurboWarp extension developers use to code their extensions.
+
+## Testing Your Extension Logic
+
+Mint ships a built-in unit-test scaffold powered by Node's native test runner (`node:test`). No extra frameworks or configuration files are needed.
+
+### Running Tests
+
+```bash
+# Run all tests once
+npm run test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+```
+
+### Test File Layout
+
+Place your test files in the `tests/` directory using the `.test.js` suffix:
+
+```
+tests/
+  helpers/
+    mock-scratch.js   # Scratch environment mock (provided)
+  01-core.test.js     # Tests for the extension class
+  02-example-module.test.js  # Tests for helper module functions
+```
+
+### Testing Helper Functions (Pure Logic)
+
+Functions exported from your modules can be imported and asserted against directly — no Scratch mock required:
+
+```js
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { calculateDistance } from '../src/02-example-module.js';
+
+describe('calculateDistance()', () => {
+  it('computes a 3-4-5 right triangle distance', () => {
+    assert.equal(calculateDistance({ X1: 0, Y1: 0, X2: 3, Y2: 4 }), 5);
+  });
+});
+```
+
+### Testing Block Methods (Extension Class)
+
+The extension class references the `Scratch` global, which doesn't exist in Node.js. Use the provided `installScratchMock` helper before importing your extension module:
+
+```js
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { installScratchMock } from './helpers/mock-scratch.js';
+
+// Install the mock BEFORE importing the extension source.
+const { mock } = installScratchMock();
+let extension;
+mock.extensions.register = instance => {
+  extension = instance;
+};
+
+await import('../src/01-core.js');
+
+describe('add()', () => {
+  it('adds two numbers', () => {
+    assert.equal(extension.add({ A: 3, B: 4 }), 7);
+  });
+});
+```
+
+### Common Patterns
+
+| What to test              | How                                                                    |
+| ------------------------- | ---------------------------------------------------------------------- |
+| Exported helper function  | Import directly and call with mock `args`                              |
+| Block method return value | Install the Scratch mock, import the core, call `extension.<method>()` |
+| `getInfo()` metadata      | Assert `typeof info.id`, `Array.isArray(info.blocks)`, etc.            |
+| Edge cases / defaults     | Pass `{}` or partial `args` objects                                    |

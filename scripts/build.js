@@ -23,6 +23,9 @@ const RECOMMEND_MIN_THRESHOLD_BYTES = 50 * 1024; // 50 KB
 // Width (in characters) of the failure/recovery banner lines
 const BANNER_WIDTH = 62;
 
+// Regex to match header metadata comment lines (Name, ID, Description, By, License, Version)
+const COMMENTS_REGEX = /^\s*(Name|ID|Description|By|License|Version)\s*:/;
+
 // Check for --watch / --notify / --production flags early so helper functions can read them
 const watchMode = process.argv.includes('--watch');
 const notifyMode = process.argv.includes('--notify');
@@ -408,7 +411,7 @@ async function buildExtension() {
           compress: false,
           mangle: false,
           format: {
-            comments: /^\s*(Name|ID|Description|By|License|Version):/,
+            comments: COMMENTS_REGEX,
             beautify: true,
           },
         });
@@ -462,7 +465,7 @@ async function buildExtension() {
         compress: true,
         mangle: true,
         format: {
-          comments: /^\s*(Name|ID|Description|By|License|Version):/,
+          comments: COMMENTS_REGEX,
         },
       });
 

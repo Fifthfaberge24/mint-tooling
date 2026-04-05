@@ -1,4 +1,3 @@
-/* global __mint_getAsset */
 /**
  * Core Extension Module
  * This is the main extension class that Scratch will register

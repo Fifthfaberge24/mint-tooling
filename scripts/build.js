@@ -149,15 +149,43 @@ function generateHeader(manifest) {
 }
 
 /**
- * Get all JS files from src directory in order
+ * Get all JS and TS files from src directory in order
  */
 function getSourceFiles() {
   const files = fs
     .readdirSync(SRC_DIR)
-    .filter(file => file.endsWith('.js') && !file.startsWith('.'))
+    .filter(file => (file.endsWith('.js') || file.endsWith('.ts')) && !file.startsWith('.'))
     .sort();
 
   return files.map(file => path.join(SRC_DIR, file));
+}
+
+/**
+ * Transpile a TypeScript source string to JavaScript using esbuild.
+ * Returns the transpiled JS code and the accompanying sourcemap (if generated).
+ *
+ * @param {string} content  - Raw TypeScript source
+ * @param {string} filePath - Absolute path (used for error messages and the sourcemap `sources` field)
+ * @returns {Promise<{ code: string, map: string | null }>} Transpiled JavaScript and optional sourcemap
+ */
+async function transpileTypeScript(content, filePath) {
+  let esbuild;
+  try {
+    esbuild = await import('esbuild');
+  } catch {
+    throw new Error(
+      `TypeScript file detected (${path.basename(filePath)}) but "esbuild" is not installed. Run: npm install --save-dev esbuild`
+    );
+  }
+
+  const result = await esbuild.transform(content, {
+    loader: 'ts',
+    target: 'es2017',
+    sourcefile: path.basename(filePath),
+    sourcemap: 'external',
+  });
+
+  return { code: result.code, map: result.map || null };
 }
 
 /**
@@ -362,12 +390,28 @@ async function buildExtension() {
     output += '  "use strict";\n\n';
     output += assetsCode;
 
+    // Collect per-TS-file sourcemaps to write after the bundle is emitted
+    const sourceMaps = [];
+
     // Concatenate all source files
-    sourceFiles.forEach(file => {
+    for (const file of sourceFiles) {
       const filename = path.basename(file);
       output += `  // ===== ${filename} =====\n`;
 
       let content = fs.readFileSync(file, 'utf8');
+
+      // Transpile TypeScript files to JavaScript before further processing.
+      // The `export` keyword (e.g. `export function foo`) is handled below by
+      // the same regex strip used for .js modules, so no special treatment is
+      // needed — esbuild emits standard ES2017 and the IIFE wrapper receives
+      // plain functions/classes.
+      if (file.endsWith('.ts')) {
+        const transpiled = await transpileTypeScript(content, file);
+        content = transpiled.code;
+        if (transpiled.map) {
+          sourceMaps.push({ filename, map: transpiled.map });
+        }
+      }
 
       /**
        * TRANSFORM MODULES TO PLAIN JS
@@ -388,7 +432,7 @@ async function buildExtension() {
 
       output += indentedContent;
       output += '\n\n';
-    });
+    }
 
     // Close IIFE
     output += '})(Scratch);\n';
@@ -421,6 +465,22 @@ async function buildExtension() {
 
     // Write standard output
     fs.writeFileSync(OUTPUT_FILE, finalOutput, 'utf8');
+
+    // --- Write per-TS-file sourcemaps ---
+    // Each map reflects the transpiled JS → original TypeScript source mapping
+    // produced by esbuild. These are individual file maps; they do not cover
+    // the IIFE-wrapped bundle as a whole. Load them manually in browser devtools
+    // (Source > Add folder to workspace, or drag-and-drop the .map file) to
+    // browse original TypeScript when debugging.
+    for (const { filename, map } of sourceMaps) {
+      const mapFile = path.join(BUILD_DIR, `${filename}.map`);
+      try {
+        fs.writeFileSync(mapFile, map, 'utf8');
+        console.log(`  Sourcemap written: ${mapFile}`);
+      } catch (err) {
+        console.warn(`Warning: Could not write sourcemap for ${filename}: ${err.message}`);
+      }
+    }
 
     const info = [];
     const size = (finalOutput.length / 1024).toFixed(2);

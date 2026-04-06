@@ -48,7 +48,7 @@ export function collectAssetReferences(srcDir) {
 
   const files = fs
     .readdirSync(srcDir)
-    .filter(f => f.endsWith('.js') && !f.startsWith('.'))
+    .filter(f => (f.endsWith('.js') || f.endsWith('.ts')) && !f.startsWith('.'))
     .sort()
     .map(f => path.join(srcDir, f));
 

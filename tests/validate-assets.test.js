@@ -108,11 +108,39 @@ describe('collectAssetReferences()', () => {
     }
   });
 
-  it('ignores non-.js files', () => {
-    const srcDir = makeTempSrc({ 'readme.md': "mint.assets.get('image.png')\n" });
+  it('ignores non-.js and non-.ts files', () => {
+    const srcDir = makeTempSrc({ 'readme.md': "__ASSET__('image.png')\n" });
     try {
       const refs = collectAssetReferences(srcDir);
       assert.deepEqual(refs, []);
+    } finally {
+      fs.rmSync(srcDir, { recursive: true, force: true });
+    }
+  });
+
+  it('collects mint.assets.get references from .ts files', () => {
+    const srcDir = makeTempSrc({ 'ext.ts': "mint.assets.get('icons/menu.png')\n" });
+    try {
+      const refs = collectAssetReferences(srcDir);
+      assert.equal(refs.length, 1);
+      assert.equal(refs[0].file, 'ext.ts');
+      assert.equal(refs[0].assetPath, 'icons/menu.png');
+    } finally {
+      fs.rmSync(srcDir, { recursive: true, force: true });
+    }
+  });
+
+  it('collects references from mixed .js and .ts files', () => {
+    const srcDir = makeTempSrc({
+      '01-a.js': "mint.assets.get('a.png')\n",
+      '02-b.ts': "mint.assets.get('b.png')\n",
+    });
+    try {
+      const refs = collectAssetReferences(srcDir);
+      assert.equal(refs.length, 2);
+      const paths = refs.map(r => r.assetPath);
+      assert.ok(paths.includes('a.png'));
+      assert.ok(paths.includes('b.png'));
     } finally {
       fs.rmSync(srcDir, { recursive: true, force: true });
     }

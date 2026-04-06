@@ -22,6 +22,7 @@
     "asset:remove": "node scripts/asset.js remove",
     "test": "node scripts/test.js",
     "test:watch": "node scripts/test.js --watch",
+    "typecheck": "tsc --noEmit",
     "fullstack": "npm run format && npm run lint && npm run validate && npm run build && npm run test"
   },
   "keywords": [
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.0",
     "chokidar": "^5.0.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.2.0",
     "globals": "^17.4.0",
     "prettier": "^3.0.0",

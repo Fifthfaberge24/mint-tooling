@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_DIR = path.join(__dirname, '../src');
 /**
- * Get all JS files from src directory in order
+ * Get all JS and TS files from src directory in order
  *
  * @param {string} [srcDir]
  * @returns {string[]}
@@ -27,7 +27,7 @@ const SRC_DIR = path.join(__dirname, '../src');
 function getSourceFiles(srcDir = SRC_DIR) {
   const files = fs
     .readdirSync(srcDir)
-    .filter(file => file.endsWith('.js') && !file.startsWith('.'))
+    .filter(file => (file.endsWith('.js') || file.endsWith('.ts')) && !file.startsWith('.'))
     .sort();
 
   return files.map(f => path.join(srcDir, f));
@@ -149,7 +149,8 @@ function extractClassMethods(sourceFiles) {
     const fileName = path.basename(filePath);
 
     const methods = new Set();
-    const methodRegex = /^  (?:async\s+)?(\w+)\s*\([^)]*\)\s*\{/gm;
+    const methodRegex =
+      /^  (?:(?:public|private|protected|static|override)\s+)*(?:async\s+)?(\w+)\s*\([^)]*\)(?:\s*:\s*[^{\n]*)?\s*\{/gm;
     for (const m of content.matchAll(methodRegex)) {
       methods.add(m[1]);
     }

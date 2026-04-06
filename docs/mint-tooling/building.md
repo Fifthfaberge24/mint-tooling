@@ -59,6 +59,8 @@ The build script transforms your ES modules into a single IIFE by:
 3. Indenting each file's content by two spaces and injecting a file name comment before it.
 4. Wrapping everything in `(function (Scratch) { "use strict"; ... })(Scratch);`.
 
+TypeScript (`.ts`) files are transpiled to JavaScript by `esbuild` before the above steps run.  See [TypeScript Support](./typescript.md) for details.
+
 The `Scratch` global is passed as a parameter rather than accessed directly. This matches TurboWarp's sandboxed extension loading model.
 
 > [!NOTE]

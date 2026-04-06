@@ -42,25 +42,38 @@ export function createScratchMock() {
 }
 
 /**
- * Install a Scratch mock as `globalThis.Scratch` so that extension source
- * modules which reference the `Scratch` global work in Node.js tests.
+ * Install a Scratch mock as `globalThis.Scratch` and a mint mock as
+ * `globalThis.mint` so that extension source modules which reference these
+ * globals work in Node.js tests.
  *
  * @returns {{ mock: object, restore: () => void }}
  *   `mock`    — the installed Scratch mock (mutate to override behaviour).
- *   `restore` — call to remove or restore the original global value.
+ *   `restore` — call to remove or restore the original global values.
  */
 export function installScratchMock() {
-  const original = globalThis.Scratch;
+  const originalScratch = globalThis.Scratch;
+  const originalMint = globalThis.mint;
   const mock = createScratchMock();
   globalThis.Scratch = mock;
+  globalThis.mint = {
+    assets: {
+      get() { return undefined; },
+      exists() { return false; },
+    },
+  };
 
   return {
     mock,
     restore: () => {
-      if (original === undefined) {
+      if (originalScratch === undefined) {
         delete globalThis.Scratch;
       } else {
-        globalThis.Scratch = original;
+        globalThis.Scratch = originalScratch;
+      }
+      if (originalMint === undefined) {
+        delete globalThis.mint;
+      } else {
+        globalThis.mint = originalMint;
       }
     },
   };

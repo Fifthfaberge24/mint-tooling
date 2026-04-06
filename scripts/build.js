@@ -293,8 +293,12 @@ async function buildExtension() {
     console.log('✓ Asset references valid');
 
     // --- Bundle assets from src/assets as base64 data URIs ---
-    let assetsCode = '';
-    let assetsMap = {};
+    // mint.assets is always injected so it is safe to call regardless of whether
+    // any assets exist; when the src/assets directory is absent or empty, both
+    // methods return undefined / false gracefully.
+    const MINT_STUB =
+      '  const mint = { assets: { get() { return undefined; }, exists() { return false; } } };\n\n';
+    let assetsCode = MINT_STUB;
     try {
       const assetsDir = path.join(SRC_DIR, 'assets');
       if (fs.existsSync(assetsDir)) {
@@ -318,7 +322,7 @@ async function buildExtension() {
             assets[rel] = `data:${mime};base64,${b64}`;
           });
 
-          // Generate JS code that defines functions for each asset and a getter
+          // Generate JS code that defines functions for each asset and the mint API
           const makeSafe = name =>
             name.replace(/[^a-zA-Z0-9_$]/g, '_').replace(/^[0-9]/, m => '_' + m);
           let gen = '  // --- Embedded assets ---\n';
@@ -337,16 +341,18 @@ async function buildExtension() {
             });
           gen += '  };\n\n';
           gen +=
-            '  function __mint_getAsset(name) { return __mint_assets[name] ? __mint_assets[name]() : undefined; }\n\n';
+            '  const mint = {\n' +
+            '    assets: {\n' +
+            '      get(name) { return __mint_assets[name] ? __mint_assets[name]() : undefined; },\n' +
+            '      exists(name) { return Object.prototype.hasOwnProperty.call(__mint_assets, name); }\n' +
+            '    }\n' +
+            '  };\n\n';
           assetsCode = gen;
-
-          // Also expose the assets map for build-time replacements
-          assetsMap = assets;
         }
       }
     } catch (err) {
       console.warn('Asset bundling failed:', err && err.message ? err.message : err);
-      assetsCode = '';
+      assetsCode = MINT_STUB;
     }
 
     let output = header;
@@ -354,7 +360,7 @@ async function buildExtension() {
     // Add IIFE wrapper that takes Scratch as parameter
     output += '(function (Scratch) {\n';
     output += '  "use strict";\n\n';
-    output += assetsCode || '';
+    output += assetsCode;
 
     // Concatenate all source files
     sourceFiles.forEach(file => {
@@ -371,20 +377,6 @@ async function buildExtension() {
 
       // 2. Remove 'export ' prefix
       content = content.replace(/^export\s+/gm, '');
-
-      // 3. Replace only explicit __ASSET__('path') placeholders with literal data URIs
-      if (assetsMap && Object.keys(assetsMap).length) {
-        content = content.replace(/__ASSET__\(\s*(['"])([^'\"]+)\1\s*\)/g, (m, q, key) => {
-          // Normalise lookup key to use POSIX-style separators and remove redundant segments
-          const lookupKey = path.posix.normalize(key.replace(/\\/g, '/'));
-          const val = assetsMap[lookupKey];
-          if (val && typeof val === 'string') {
-            return JSON.stringify(val);
-          }
-          // Fail fast on unresolved asset references so build aborts
-          throw new Error(`Missing asset key: ${key}`);
-        });
-      }
 
       // Indent the content for the IIFE
       const indentedContent = content

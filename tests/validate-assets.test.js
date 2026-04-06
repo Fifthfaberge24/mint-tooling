@@ -57,8 +57,8 @@ describe('collectAssetReferences()', () => {
     }
   });
 
-  it('collects a single __ASSET__ reference with single quotes', () => {
-    const srcDir = makeTempSrc({ 'ext.js': "__ASSET__('icons/menu.png')\n" });
+  it('collects a single mint.assets.get reference with single quotes', () => {
+    const srcDir = makeTempSrc({ 'ext.js': "mint.assets.get('icons/menu.png')\n" });
     try {
       const refs = collectAssetReferences(srcDir);
       assert.equal(refs.length, 1);
@@ -69,8 +69,8 @@ describe('collectAssetReferences()', () => {
     }
   });
 
-  it('collects a single __ASSET__ reference with double quotes', () => {
-    const srcDir = makeTempSrc({ 'ext.js': '__ASSET__("icons/block.png")\n' });
+  it('collects a single mint.assets.get reference with double quotes', () => {
+    const srcDir = makeTempSrc({ 'ext.js': 'mint.assets.get("icons/block.png")\n' });
     try {
       const refs = collectAssetReferences(srcDir);
       assert.equal(refs.length, 1);
@@ -80,10 +80,21 @@ describe('collectAssetReferences()', () => {
     }
   });
 
+  it('collects a mint.assets.exists reference', () => {
+    const srcDir = makeTempSrc({ 'ext.js': "mint.assets.exists('optional.png')\n" });
+    try {
+      const refs = collectAssetReferences(srcDir);
+      assert.equal(refs.length, 1);
+      assert.equal(refs[0].assetPath, 'optional.png');
+    } finally {
+      fs.rmSync(srcDir, { recursive: true, force: true });
+    }
+  });
+
   it('collects multiple references across multiple files', () => {
     const srcDir = makeTempSrc({
-      '01-a.js': "__ASSET__('a.png')\n__ASSET__('b.png')\n",
-      '02-b.js': "__ASSET__('c.png')\n",
+      '01-a.js': "mint.assets.get('a.png')\nmint.assets.get('b.png')\n",
+      '02-b.js': "mint.assets.get('c.png')\n",
     });
     try {
       const refs = collectAssetReferences(srcDir);
@@ -98,7 +109,7 @@ describe('collectAssetReferences()', () => {
   });
 
   it('ignores non-.js files', () => {
-    const srcDir = makeTempSrc({ 'readme.md': "__ASSET__('image.png')\n" });
+    const srcDir = makeTempSrc({ 'readme.md': "mint.assets.get('image.png')\n" });
     try {
       const refs = collectAssetReferences(srcDir);
       assert.deepEqual(refs, []);
@@ -126,7 +137,7 @@ describe('validateAssetReferences()', () => {
 
   it('returns no errors when all referenced assets exist', () => {
     const srcDir = makeTempSrc({
-      'ext.js': "__ASSET__('icons/menu.png')\n",
+      'ext.js': "mint.assets.get('icons/menu.png')\n",
       'assets/icons/menu.png': 'PNG_DATA',
     });
     try {
@@ -139,7 +150,7 @@ describe('validateAssetReferences()', () => {
 
   it('returns an error for each missing asset, including source file name and path', () => {
     const srcDir = makeTempSrc({
-      '01-core.js': "__ASSET__('icons/missing.png')\n",
+      '01-core.js': "mint.assets.get('icons/missing.png')\n",
     });
     try {
       const { errors } = validateAssetReferences(srcDir);
@@ -156,7 +167,7 @@ describe('validateAssetReferences()', () => {
 
   it('reports one error per missing reference', () => {
     const srcDir = makeTempSrc({
-      'a.js': "__ASSET__('one.png')\n__ASSET__('two.png')\n",
+      'a.js': "mint.assets.get('one.png')\nmint.assets.get('two.png')\n",
     });
     try {
       const { errors } = validateAssetReferences(srcDir);
@@ -183,7 +194,7 @@ describe('validateAssetReferences()', () => {
 
   it('does not warn about assets that are referenced', () => {
     const srcDir = makeTempSrc({
-      'ext.js': "__ASSET__('logo.png')\n__ASSET__('icons\\\\menu.png')\n",
+      'ext.js': "mint.assets.get('logo.png')\nmint.assets.get('icons\\\\menu.png')\n",
       'assets/logo.png': 'PNG_DATA',
       'assets/icons/menu.png': 'PNG_DATA',
     });
@@ -208,7 +219,7 @@ describe('validateAssetReferences()', () => {
 
   it('rejects path traversal references with an error', () => {
     const srcDir = makeTempSrc({
-      'ext.js': "__ASSET__('../escape.png')\n",
+      'ext.js': "mint.assets.get('../escape.png')\n",
     });
     try {
       const { errors } = validateAssetReferences(srcDir);
@@ -221,7 +232,7 @@ describe('validateAssetReferences()', () => {
 
   it('rejects a reference that resolves to a directory, not a file', () => {
     const srcDir = makeTempSrc({
-      'ext.js': "__ASSET__('subdir')\n",
+      'ext.js': "mint.assets.get('subdir')\n",
       // create a subdirectory (not a file) with that name
       'assets/subdir/.keep': '',
     });

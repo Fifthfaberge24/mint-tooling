@@ -29,9 +29,9 @@ When you run `npm run build`, Mint:
 | `npm run format`          | Format `src/` with Prettier                                 |
 | `npm run validate`        | Check block opcode signatures                               |
 | `npm run validate:assets` | Check asset references                                      |
-| `npm run asset:list`      | List all assets in `src/assets/`                            |
-| `npm run asset:add`       | Copy a file into `src/assets/`                              |
-| `npm run asset:remove`    | Remove an asset from `src/assets/`                          |
+| `npm run asset:list`      | List all assets in `src/assets/` with types, sizes, and usage references |
+| `npm run asset:add`       | Copy a file into `src/assets/` (interactive file picker if no path given) |
+| `npm run asset:remove`    | Remove an asset from `src/assets/` (interactive picker if no name given)  |
 | `npm run test`            | Run all tests once                                          |
 | `npm run test:watch`      | Run tests and re-run on file changes                        |
 | `npm run init`            | Interactive project initializer                             |

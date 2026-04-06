@@ -3,8 +3,8 @@
 /**
  * Pre-build asset reference validation.
  *
- * Scans source files for __ASSET__('path') usages and verifies each
- * referenced file exists under src/assets/.  Unreferenced assets in
+ * Scans source files for mint.assets.get('path') / mint.assets.exists('path') usages
+ * and verifies each referenced file exists under src/assets/.  Unreferenced assets in
  * src/assets/ produce warnings but do not fail the build.
  *
  * Usage:
@@ -35,9 +35,10 @@ function walk(dir) {
 }
 
 /**
- * Scan all .js source files in the top level of srcDir for __ASSET__('path')
- * references.  Sub-directories are not scanned, matching the same convention
- * used by the build's getSourceFiles() helper.
+ * Scan all .js source files in the top level of srcDir for
+ * mint.assets.get('path') and mint.assets.exists('path') references.
+ * Sub-directories are not scanned, matching the same convention used by
+ * the build's getSourceFiles() helper.
  *
  * @param {string} srcDir
  * @returns {{ file: string, assetPath: string }[]}
@@ -56,7 +57,9 @@ export function collectAssetReferences(srcDir) {
     const content = fs.readFileSync(filePath, 'utf8');
     const fileName = path.basename(filePath);
     // Use matchAll so each file scan gets a fresh RegExp with no shared lastIndex
-    for (const m of content.matchAll(/__ASSET__\(\s*(['"])([^'"]+)\1\s*\)/g)) {
+    for (const m of content.matchAll(
+      /mint\.assets\.(?:get|exists)\(\s*(['"])([^'"]+)\1\s*\)/g
+    )) {
       refs.push({ file: fileName, assetPath: m[2] });
     }
   }
@@ -64,9 +67,9 @@ export function collectAssetReferences(srcDir) {
 }
 
 /**
- * Validate that every __ASSET__('path') reference in source files resolves to
- * an existing file under src/assets/.  Also warns about assets that exist in
- * src/assets/ but are not referenced by any source file.
+ * Validate that every mint.assets.get/exists('path') reference in source files
+ * resolves to an existing file under src/assets/.  Also warns about assets that
+ * exist in src/assets/ but are not referenced by any source file.
  *
  * @param {string} [srcDir] - Source directory to scan (defaults to `../src`).
  * @returns {{ errors: string[], warnings: string[] }}
@@ -88,7 +91,7 @@ export function validateAssetReferences(srcDir = SRC_DIR) {
     const resolvedAssets = path.resolve(assetsDir);
     const resolvedFull = path.resolve(fullPath);
     if (!resolvedFull.startsWith(resolvedAssets + path.sep) && resolvedFull !== resolvedAssets) {
-      errors.push(`  ✗ [${file}] __ASSET__('${assetPath}') — invalid path (traversal detected)`);
+      errors.push(`  ✗ [${file}] mint.assets.get/exists('${assetPath}') — invalid path (traversal detected)`);
       continue;
     }
 
@@ -101,7 +104,7 @@ export function validateAssetReferences(srcDir = SRC_DIR) {
     }
     if (!stat || !stat.isFile()) {
       errors.push(
-        `  ✗ [${file}] __ASSET__('${assetPath}') — file not found: src/assets/${normalisedPath}`
+        `  ✗ [${file}] mint.assets.get/exists('${assetPath}') — file not found: src/assets/${normalisedPath}`
       );
     }
   }

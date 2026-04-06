@@ -36,8 +36,7 @@ export default [
       globals: {
         ...globals.browser,
         Scratch: 'readonly',
-        __ASSET__: 'readonly',
-        __mint_getAsset: 'readonly',
+        mint: 'readonly',
       },
     },
     plugins: {

@@ -23,10 +23,8 @@ class TurboWarpExtension {
       color1: '#4CAF50',
       color2: '#45a049',
       color3: '#3d8b40',
-      menuIconURI:
-        (typeof __mint_getAsset === 'function' && __mint_getAsset('icons/menu.png')) || '',
-      blockIconURI:
-        (typeof __mint_getAsset === 'function' && __mint_getAsset('icons/block.png')) || '',
+      menuIconURI: mint.assets.get('icons/menu.png') ?? '',
+      blockIconURI: mint.assets.get('icons/block.png') ?? '',
       blocks: [
         {
           opcode: 'helloWorld',

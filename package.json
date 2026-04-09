@@ -8,6 +8,8 @@
     "build": "node scripts/build.js",
     "build:clean": "node scripts/build.js --clean-cache",
     "build:prod": "node scripts/build.js --production",
+    "build:sourcemap": "node scripts/build.js --sourcemap",
+    "build:prod:inline-sourcemap": "node scripts/build.js --production --inline-sourcemap",
     "build:recommended": "node scripts/build.js",
     "watch": "node scripts/build.js --watch",
     "watch:notify": "node scripts/build.js --watch --notify",

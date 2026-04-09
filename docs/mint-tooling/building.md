@@ -8,6 +8,28 @@ npm run build
 
 This runs a single build and exits. The output goes to `build/`. If validation fails, the process exits with a non-zero code and prints the individual errors. If an unexpected exception occurs during bundling, a prominent failure banner also appears in your terminal.
 
+### Source map options
+
+By default, source maps are disabled.
+
+```bash
+npm run build -- --sourcemap
+```
+
+Generates external `*.map` files for each artifact that is produced:
+
+- `build/extension.js.map`
+- `build/min.extension.js.map` (when minification is available)
+- `build/pretty.extension.js.map` (when formatting is available)
+
+```bash
+npm run build:prod -- --inline-sourcemap
+```
+
+Embeds inline source maps directly in each generated artifact instead of writing separate `.map` files.
+
+## Caching
+
 By default, Mint uses an internal cache in `.mint-cache/` to speed up incremental builds by reusing unchanged module transforms and cached validation results.
 
 ```bash
@@ -41,6 +63,7 @@ After every successful build, Mint writes `build/BUILD_REPORT.md`. Open it to se
 - If `extension.js` exceeds 50 KB and a minified output was produced, the report recommends `min.extension.js` for production.
 - Otherwise, `extension.js` is recommended.
 - `pretty.extension.js` is always the recommendation for debugging.
+- The report also includes a **Source Maps** section showing whether maps were generated inline or as external files.
 
 ## Watch mode
 
@@ -50,6 +73,12 @@ npm run watch
 
 Builds once immediately, then watches `src/` for changes and rebuilds whenever a file is saved. A concurrency guard prevents overlapping builds: if a second change arrives while a build is in progress, the pending build runs as soon as the current one finishes.
 
+You can combine watch mode with source map flags:
+
+```bash
+npm run watch -- --sourcemap
+npm run watch -- --inline-sourcemap
+```
 When caching is enabled, build output includes cache hit/miss statistics and the number of rebuilt modules.
 
 ```bash
@@ -65,6 +94,14 @@ npm run build:prod
 ```
 
 Passes the `--production` flag to the build script. You can also set `NODE_ENV=production` before running the build command, though the syntax varies by shell: `NODE_ENV=production npm run build` (POSIX shells like bash/zsh), `$env:NODE_ENV='production'; npm run build` (PowerShell), or `set NODE_ENV=production&& npm run build` (cmd.exe). For a portable cross-platform approach, use the provided `npm run build:prod` script. In production mode, Mint runs an extra pass through Terser to strip developer comments from the output while keeping the metadata header lines (`Name`, `ID`, `Description`, `By`, `License`, `Version`).
+
+## Debugging workflow in browser DevTools
+
+1. Build with source maps enabled (`--sourcemap` or `--inline-sourcemap`).
+2. Load `build/extension.js` (or `build/min.extension.js`) in TurboWarp.
+3. Open browser DevTools and reproduce the issue.
+4. In the Sources panel, open the mapped source and place breakpoints in the original code.
+5. Refresh/reload the extension after rebuilding to pick up updated maps.
 
 ## What the bundler actually does
 

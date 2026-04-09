@@ -17,25 +17,27 @@ When you run `npm run build`, Mint:
 
 ## Available commands
 
-| Command                   | What it does                                                              |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `npm run build`           | Build once                                                                |
-| `npm run build:prod`      | Build with comment stripping (same as `--production`)                     |
-| `npm run watch`           | Build and rebuild on every source change                                  |
-| `npm run watch:notify`    | Same as `watch`, plus desktop notifications on build events               |
-| `npm run serve`           | Start a local HTTP server and watch for changes                           |
-| `npm run lint`            | Lint `src/` with ESLint                                                   |
-| `npm run lint:fix`        | Lint and auto-fix                                                         |
-| `npm run format`          | Format `src/` with Prettier                                               |
-| `npm run validate`        | Check block opcode signatures                                             |
-| `npm run validate:assets` | Check asset references                                                    |
-| `npm run asset:list`      | List all assets in `src/assets/` with types, sizes, and usage references  |
-| `npm run asset:add`       | Copy a file into `src/assets/` (interactive file picker if no path given) |
-| `npm run asset:remove`    | Remove an asset from `src/assets/` (interactive picker if no name given)  |
-| `npm run test`            | Run all tests once                                                        |
-| `npm run test:watch`      | Run tests and re-run on file changes                                      |
-| `npm run init`            | Interactive project initializer                                           |
-| `npm run fullstack`       | Format, lint, validate, build, and test in one shot                       |
+| Command                       | What it does                                                             |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| `npm run build`               | Build once                                                               |
+| `npm run build -- --no-cache` | Build once while bypassing cache                                         |
+| `npm run build:clean`         | Clear `.mint-cache/` then rebuild                                        |
+| `npm run build:prod`          | Build with comment stripping (same as `--production`)                    |
+| `npm run watch`               | Build and rebuild on every source change                                 |
+| `npm run watch:notify`        | Same as `watch`, plus desktop notifications on build events              |
+| `npm run serve`               | Start a local HTTP server and watch for changes                          |
+| `npm run lint`                | Lint `src/` with ESLint                                                  |
+| `npm run lint:fix`            | Lint and auto-fix                                                        |
+| `npm run format`              | Format `src/` with Prettier                                              |
+| `npm run validate`            | Check block opcode signatures                                            |
+| `npm run validate:assets`     | Check asset references                                                   |
+| `npm run asset:list`          | List all assets in `src/assets/` with types, sizes, and usage references |
+| `npm run asset:add`           | Add assets to `src/assets/` with automatic MIME detection and registration |
+| `npm run asset:remove`        | Remove assets from `src/assets/` and update references                    |
+| `npm run test`                | Run unit tests                                                            |
+| `npm run test:watch`          | Run tests in watch mode                                                   |
+| `npm run init`                | Initialize a new project (scaffold starter files)                         |
+| `npm run fullstack`           | Format, lint, validate, build, and test                                   |
 
 ## Documentation index
 

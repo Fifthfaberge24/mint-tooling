@@ -1,11 +1,12 @@
 {
   "type": "module",
   "name": "@triflare/mint-tooling",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "A simple and painless custom TurboWarp extension development platform, powered by bundling.",
   "main": "build/extension.js",
   "scripts": {
     "build": "node scripts/build.js",
+    "build:clean": "node scripts/build.js --clean-cache",
     "build:prod": "node scripts/build.js --production",
     "build:recommended": "node scripts/build.js",
     "watch": "node scripts/build.js --watch",

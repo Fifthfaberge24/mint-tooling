@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { validateOpcodeSignatures } from './validate.js';
@@ -12,6 +13,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SRC_DIR = path.join(__dirname, '../src');
 const BUILD_DIR = path.join(__dirname, '../build');
+const CACHE_DIR = path.join(__dirname, '../.mint-cache');
+const CACHE_FILE = path.join(CACHE_DIR, 'build-cache.json');
 const OUTPUT_FILE = path.join(BUILD_DIR, 'extension.js');
 const OUTPUT_MIN_FILE = path.join(BUILD_DIR, 'min.extension.js');
 const OUTPUT_MAX_FILE = path.join(BUILD_DIR, 'pretty.extension.js');
@@ -29,6 +32,8 @@ const COMMENTS_REGEX = /^\s*(Name|ID|Description|By|License|Version)\s*:/;
 // Check for --watch / --notify / --production flags early so helper functions can read them
 const watchMode = process.argv.includes('--watch');
 const notifyMode = process.argv.includes('--notify');
+const noCacheMode = process.argv.includes('--no-cache');
+const cleanCacheMode = process.argv.includes('--clean-cache');
 const productionMode =
   process.argv.includes('--production') || process.env.NODE_ENV === 'production';
 
@@ -42,6 +47,174 @@ let lastBuildFailed = false;
 // Create build directory if it doesn't exist
 if (!fs.existsSync(BUILD_DIR)) {
   fs.mkdirSync(BUILD_DIR, { recursive: true });
+}
+if ((cleanCacheMode || !noCacheMode) && !fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
+
+/**
+ * Compute SHA256 hash for a string
+ * @param {string|Buffer} content
+ * @returns {string}
+ */
+function hashString(content) {
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+/**
+ * Compute SHA256 hash for a file.
+ * @param {string} filePath
+ * @returns {string}
+ */
+function hashFile(filePath) {
+  return hashString(fs.readFileSync(filePath));
+}
+
+/**
+ * Build a module dependency graph from import statements.
+ * @param {string[]} sourceFiles
+ * @returns {Map<string, Set<string>>} direct dependency graph
+ */
+function getModuleDependencies(sourceFiles) {
+  const byBasename = new Map(sourceFiles.map(file => [path.basename(file), file]));
+  const deps = new Map(sourceFiles.map(file => [file, new Set()]));
+  // Static import parser for dependency invalidation (dynamic import() is intentionally ignored).
+  const importRegex = /^\s*import(?:\s+type)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"];?\s*$/gm;
+
+  for (const file of sourceFiles) {
+    const content = fs.readFileSync(file, 'utf8');
+    const contentSansComments = content
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    let match;
+    while ((match = importRegex.exec(contentSansComments)) !== null) {
+      const specifier = match[1];
+      if (!specifier.startsWith('.')) continue;
+      const normalized = specifier.replace(/\\/g, '/');
+      const targetBase = path.basename(normalized);
+      const resolved =
+        byBasename.get(targetBase) ||
+        byBasename.get(`${targetBase}.js`) ||
+        byBasename.get(`${targetBase}.ts`) ||
+        byBasename.get(targetBase.replace(/\.js$/i, '.ts')) ||
+        byBasename.get(targetBase.replace(/\.ts$/i, '.js'));
+      if (resolved) {
+        deps.get(file).add(resolved);
+      }
+    }
+  }
+
+  return deps;
+}
+
+/**
+ * Expand changed module set to include dependents (reverse dependencies).
+ * @param {Map<string, Set<string>>} deps
+ * @param {Set<string>} changed
+ * @returns {Set<string>}
+ */
+function expandChangedWithDependents(deps, changed) {
+  const reverse = new Map();
+  for (const [file, requires] of deps.entries()) {
+    for (const dep of requires) {
+      if (!reverse.has(dep)) reverse.set(dep, new Set());
+      reverse.get(dep).add(file);
+    }
+  }
+
+  const affected = new Set(changed);
+  const queue = [...changed];
+  for (let i = 0; i < queue.length; i++) {
+    const current = queue[i];
+    const dependents = reverse.get(current);
+    if (!dependents) continue;
+    for (const dep of dependents) {
+      if (!affected.has(dep)) {
+        affected.add(dep);
+        queue.push(dep);
+      }
+    }
+  }
+  return affected;
+}
+
+/**
+ * Get a stable hash for the current source and validation inputs.
+ * @param {string[]} sourceFiles
+ */
+function getBuildInputs(sourceFiles) {
+  const sourceHashes = {};
+  for (const file of sourceFiles) {
+    sourceHashes[file] = hashFile(file);
+  }
+
+  const validateScript = path.join(__dirname, 'validate.js');
+  const validateAssetsScript = path.join(__dirname, 'validate-assets.js');
+  const buildScriptHash = hashFile(fileURLToPath(import.meta.url));
+  const validatorHash = hashFile(validateScript);
+  const assetValidatorHash = hashFile(validateAssetsScript);
+
+  const assetsDir = path.join(SRC_DIR, 'assets');
+  const assetFiles = [];
+  if (fs.existsSync(assetsDir)) {
+    const walk = dir =>
+      fs
+        .readdirSync(dir, { withFileTypes: true })
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+        .flatMap(d => {
+          const res = path.join(dir, d.name);
+          return d.isDirectory() ? walk(res) : [res];
+        });
+    assetFiles.push(...walk(assetsDir));
+  }
+  const assetHashes = {};
+  for (const file of assetFiles) {
+    assetHashes[path.relative(SRC_DIR, file).replace(/\\/g, '/')] = hashString(
+      fs.readFileSync(file)
+    );
+  }
+
+  const manifestPath = path.join(SRC_DIR, 'manifest.json');
+  const manifestHash = fs.existsSync(manifestPath) ? hashFile(manifestPath) : '';
+
+  return {
+    sourceHashes,
+    assetHashes,
+    buildScriptHash,
+    validatorHash,
+    assetValidatorHash,
+    manifestHash,
+  };
+}
+
+/**
+ * Load persisted cache.
+ */
+function loadBuildCache() {
+  if (!fs.existsSync(CACHE_FILE)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save persisted cache.
+ * @param {object} data
+ */
+function saveBuildCache(data) {
+  fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
+/**
+ * Clear build cache directory.
+ */
+function clearBuildCache() {
+  if (fs.existsSync(CACHE_DIR)) {
+    fs.rmSync(CACHE_DIR, { recursive: true, force: true });
+  }
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
 
 /**
@@ -294,20 +467,103 @@ async function buildExtension() {
     const manifest = getManifest();
     const header = generateHeader(manifest);
     const sourceFiles = getSourceFiles();
+    const dependencies = getModuleDependencies(sourceFiles);
+    const buildInputs = getBuildInputs(sourceFiles);
+    const useCache = !noCacheMode;
+    const previousCache = useCache ? loadBuildCache() : null;
+    const cacheCompatible =
+      !!previousCache &&
+      previousCache.version === 1 &&
+      previousCache.buildScriptHash === buildInputs.buildScriptHash;
+    const previousSourceHashes = cacheCompatible ? previousCache.sourceHashes || {} : {};
+    const previousModuleCache = cacheCompatible ? previousCache.modules || {} : {};
+    const sourceSetChanged =
+      Object.keys(previousSourceHashes).length !== sourceFiles.length ||
+      Object.keys(previousSourceHashes).some(file => !sourceFiles.includes(file));
+
+    const changedModules = new Set(
+      sourceFiles.filter(file => previousSourceHashes[file] !== buildInputs.sourceHashes[file])
+    );
+    if (sourceSetChanged) {
+      for (const file of sourceFiles) {
+        changedModules.add(file);
+      }
+    }
+    const affectedModules =
+      !useCache || !cacheCompatible
+        ? new Set(sourceFiles)
+        : expandChangedWithDependents(dependencies, changedModules);
+
+    let cacheHits = 0;
+    let cacheMisses = 0;
+    let rebuiltModules = 0;
+
+    const opcodeValidationKey = hashString(
+      JSON.stringify({
+        sourceHashes: buildInputs.sourceHashes,
+        validatorHash: buildInputs.validatorHash,
+      })
+    );
+    const assetValidationKey = hashString(
+      JSON.stringify({
+        sourceHashes: buildInputs.sourceHashes,
+        assetHashes: buildInputs.assetHashes,
+        assetValidatorHash: buildInputs.assetValidatorHash,
+      })
+    );
+    const cachedOpcodeValidation = cacheCompatible ? previousCache.validation?.opcode : null;
+    const cachedAssetValidation = cacheCompatible ? previousCache.validation?.assets : null;
+    let validationErrors = [];
+    let assetValidation;
 
     // Validate opcode-to-method signatures before emitting any artifacts
-    const validationErrors = validateOpcodeSignatures();
+    if (useCache && cachedOpcodeValidation && cachedOpcodeValidation.key === opcodeValidationKey) {
+      cacheHits += 1;
+      validationErrors = cachedOpcodeValidation.errors || [];
+    } else {
+      cacheMisses += 1;
+      validationErrors = validateOpcodeSignatures();
+    }
     if (validationErrors.length > 0) {
       console.error('✗ Opcode validation failed:');
       for (const err of validationErrors) {
         console.error(err);
+      }
+      if (useCache) {
+        saveBuildCache({
+          version: 1,
+          buildScriptHash: buildInputs.buildScriptHash,
+          sourceHashes: buildInputs.sourceHashes,
+          assetHashes: buildInputs.assetHashes,
+          manifestHash: buildInputs.manifestHash,
+          validatorHash: buildInputs.validatorHash,
+          assetValidatorHash: buildInputs.assetValidatorHash,
+          modules: previousModuleCache,
+          validation: {
+            opcode: { key: opcodeValidationKey, errors: validationErrors },
+            assets:
+              cachedAssetValidation && cachedAssetValidation.key === assetValidationKey
+                ? cachedAssetValidation
+                : { key: assetValidationKey, errors: [], warnings: [] },
+          },
+        });
       }
       return false;
     }
     console.log('✓ Opcode signatures valid');
 
     // Validate asset references before bundling
-    const { errors: assetErrors, warnings: assetWarnings } = validateAssetReferences(SRC_DIR);
+    if (useCache && cachedAssetValidation && cachedAssetValidation.key === assetValidationKey) {
+      cacheHits += 1;
+      assetValidation = {
+        errors: cachedAssetValidation.errors || [],
+        warnings: cachedAssetValidation.warnings || [],
+      };
+    } else {
+      cacheMisses += 1;
+      assetValidation = validateAssetReferences(SRC_DIR);
+    }
+    const { errors: assetErrors, warnings: assetWarnings } = assetValidation;
     for (const w of assetWarnings) {
       console.warn(w);
     }
@@ -315,6 +571,22 @@ async function buildExtension() {
       console.error('✗ Asset reference validation failed:');
       for (const err of assetErrors) {
         console.error(err);
+      }
+      if (useCache) {
+        saveBuildCache({
+          version: 1,
+          buildScriptHash: buildInputs.buildScriptHash,
+          sourceHashes: buildInputs.sourceHashes,
+          assetHashes: buildInputs.assetHashes,
+          manifestHash: buildInputs.manifestHash,
+          validatorHash: buildInputs.validatorHash,
+          assetValidatorHash: buildInputs.assetValidatorHash,
+          modules: previousModuleCache,
+          validation: {
+            opcode: { key: opcodeValidationKey, errors: validationErrors },
+            assets: { key: assetValidationKey, errors: assetErrors, warnings: assetWarnings },
+          },
+        });
       }
       return false;
     }
@@ -392,13 +664,34 @@ async function buildExtension() {
 
     // Collect per-TS-file sourcemaps to write after the bundle is emitted
     const sourceMaps = [];
+    const nextModuleCache = {};
 
     // Concatenate all source files
     for (const file of sourceFiles) {
       const filename = path.basename(file);
-      output += `  // ===== ${filename} =====\n`;
+      const cachedModule = previousModuleCache[file];
+      const canUseCachedModule =
+        useCache &&
+        cacheCompatible &&
+        !affectedModules.has(file) &&
+        cachedModule &&
+        cachedModule.contentHash === buildInputs.sourceHashes[file];
 
+      if (canUseCachedModule) {
+        cacheHits += 1;
+        output += cachedModule.transformed;
+        if (cachedModule.sourcemap) {
+          sourceMaps.push({ filename, map: cachedModule.sourcemap });
+        }
+        nextModuleCache[file] = cachedModule;
+        continue;
+      }
+
+      cacheMisses += 1;
+      rebuiltModules += 1;
+      let moduleOutput = `  // ===== ${filename} =====\n`;
       let content = fs.readFileSync(file, 'utf8');
+      let sourcemap = null;
 
       // Transpile TypeScript files to JavaScript before further processing.
       // The `export` keyword (e.g. `export function foo`) is handled below by
@@ -408,8 +701,9 @@ async function buildExtension() {
       if (file.endsWith('.ts')) {
         const transpiled = await transpileTypeScript(content, file);
         content = transpiled.code;
-        if (transpiled.map) {
-          sourceMaps.push({ filename, map: transpiled.map });
+        sourcemap = transpiled.map || null;
+        if (sourcemap) {
+          sourceMaps.push({ filename, map: sourcemap });
         }
       }
 
@@ -430,8 +724,14 @@ async function buildExtension() {
         })
         .join('\n');
 
-      output += indentedContent;
-      output += '\n\n';
+      moduleOutput += indentedContent;
+      moduleOutput += '\n\n';
+      output += moduleOutput;
+      nextModuleCache[file] = {
+        contentHash: buildInputs.sourceHashes[file],
+        transformed: moduleOutput,
+        sourcemap,
+      };
     }
 
     // Close IIFE
@@ -540,6 +840,29 @@ async function buildExtension() {
     // --- Build Report ---
     generateBuildReport(artifactSizes);
 
+    if (useCache) {
+      const total = cacheHits + cacheMisses;
+      const rate = total > 0 ? Math.round((cacheHits / total) * 100) : 0;
+      console.log(`Cache: ${cacheHits} hits, ${cacheMisses} misses (${rate}% hit rate)`);
+      console.log(`Rebuilt ${rebuiltModules} module${rebuiltModules === 1 ? '' : 's'}`);
+      saveBuildCache({
+        version: 1,
+        buildScriptHash: buildInputs.buildScriptHash,
+        sourceHashes: buildInputs.sourceHashes,
+        assetHashes: buildInputs.assetHashes,
+        manifestHash: buildInputs.manifestHash,
+        validatorHash: buildInputs.validatorHash,
+        assetValidatorHash: buildInputs.assetValidatorHash,
+        modules: nextModuleCache,
+        validation: {
+          opcode: { key: opcodeValidationKey, errors: validationErrors },
+          assets: { key: assetValidationKey, errors: assetErrors, warnings: assetWarnings },
+        },
+      });
+    } else {
+      console.log('Cache: disabled (--no-cache)');
+    }
+
     console.log('✓ Build successful');
     if (lastBuildFailed) {
       printRecoveryBanner();
@@ -607,6 +930,11 @@ async function watchFiles() {
 
 // Execute
 (async () => {
+  if (cleanCacheMode) {
+    clearBuildCache();
+    console.log('Cache cleared: .mint-cache/');
+  }
+
   // Always run the initial build
   const success = await buildExtension();
 

@@ -8,6 +8,20 @@ npm run build
 
 This runs a single build and exits. The output goes to `build/`. If validation fails, the process exits with a non-zero code and prints the individual errors. If an unexpected exception occurs during bundling, a prominent failure banner also appears in your terminal.
 
+By default, Mint uses an internal cache in `.mint-cache/` to speed up incremental builds by reusing unchanged module transforms and cached validation results.
+
+```bash
+npm run build -- --no-cache
+```
+
+Use `--no-cache` when you want to force a clean, cache-bypassing build.
+
+```bash
+npm run build:clean
+```
+
+`build:clean` clears `.mint-cache/` and then runs a normal build.
+
 ## Output variants
 
 Every successful build writes at least `build/extension.js`. Two optional variants are produced when the relevant packages are available:
@@ -35,6 +49,8 @@ npm run watch
 ```
 
 Builds once immediately, then watches `src/` for changes and rebuilds whenever a file is saved. A concurrency guard prevents overlapping builds: if a second change arrives while a build is in progress, the pending build runs as soon as the current one finishes.
+
+When caching is enabled, build output includes cache hit/miss statistics and the number of rebuilt modules.
 
 ```bash
 npm run watch:notify

@@ -6,10 +6,14 @@ If you have forked Mint to use as the toolchain for your own extension, `npm run
 
 The `init` script walks you through a short interactive prompt, then makes the following changes:
 
+- **Replaces `src/`**: `scaffoldTemplate()` deletes the existing `src/` directory and copies the template into a new `src/` (init replaces `src/` by deleting the existing `src/` directory and copying the template into a new `src/`).
 - Updates `package.json` with your package name, description, author, and version.
-- Removes every file from `src/` except `src/01-core.js` (including any subdirectories).
 - Writes a fresh `src/manifest.json` with your extension's metadata.
 - Prepends an initialization comment header to `src/01-core.js`.
+
+> [!WARNING]
+>
+> **Destructive Operation**: Running `npm run init` (via `scaffoldTemplate()`) will delete and replace your existing `src/` directory. Any uncommitted changes in `src/` will be lost. Rerunning `npm run init` is destructive.
 
 ## Running it
 
@@ -21,6 +25,7 @@ You will be prompted for:
 
 | Prompt                 | Example value                              | Notes                                         |
 | ---------------------- | ------------------------------------------ | --------------------------------------------- |
+| Template               | `3` / `operators`                          | Choose by number or template key              |
 | npm package name       | `my-cool-extension`                        | Kebab-case, valid npm name                    |
 | Extension display name | `My Cool Extension`                        | Shown in Scratch's extension picker           |
 | Description            | `Does cool things`                         | Short description                             |
@@ -32,6 +37,16 @@ You will be prompted for:
 
 Each prompt shows a default value in parentheses. Press Enter to accept the default.
 
+Template options:
+
+- `blank`
+- `sensing-blocks`
+- `operators`
+- `control-flow`
+- `looks`
+- `data-storage`
+- `advanced`
+
 After you confirm, the script prints a summary of the changes it will make and asks you to type `yes` before proceeding. Anything other than `yes` or `y` aborts without making any changes.
 
 ## After initialization
@@ -39,13 +54,9 @@ After you confirm, the script prints a summary of the changes it will make and a
 Once `init` finishes:
 
 1. Review `src/manifest.json` and make sure all fields are correct.
-2. Open `src/01-core.js` and update the extension `id` in `getInfo()` to match the id you chose.
+2. Confirm `src/01-core.js` now uses your selected extension id and display name in `getInfo()` and includes the initialization header comment.
 3. Run `npm run build` to confirm everything builds cleanly.
 4. Start adding your own blocks.
-
-> [!NOTE]
->
-> `init` only runs once cleanly — it will not overwrite the header in `src/01-core.js` if you run it a second time. If you want to re-initialize, delete the `// Initialized by npm run init` comment from `01-core.js` first.
 
 ## Input validation
 

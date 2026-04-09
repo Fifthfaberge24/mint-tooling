@@ -57,9 +57,7 @@ export function collectAssetReferences(srcDir) {
     const content = fs.readFileSync(filePath, 'utf8');
     const fileName = path.basename(filePath);
     // Use matchAll so each file scan gets a fresh RegExp with no shared lastIndex
-    for (const m of content.matchAll(
-      /mint\.assets\.(?:get|exists)\(\s*(['"])([^'"]+)\1\s*\)/g
-    )) {
+    for (const m of content.matchAll(/mint\.assets\.(?:get|exists)\(\s*(['"])([^'"]+)\1\s*\)/g)) {
       refs.push({ file: fileName, assetPath: m[2] });
     }
   }
@@ -91,7 +89,9 @@ export function validateAssetReferences(srcDir = SRC_DIR) {
     const resolvedAssets = path.resolve(assetsDir);
     const resolvedFull = path.resolve(fullPath);
     if (!resolvedFull.startsWith(resolvedAssets + path.sep) && resolvedFull !== resolvedAssets) {
-      errors.push(`  ✗ [${file}] mint.assets.get/exists('${assetPath}') — invalid path (traversal detected)`);
+      errors.push(
+        `  ✗ [${file}] mint.assets.get/exists('${assetPath}') — invalid path (traversal detected)`
+      );
       continue;
     }
 

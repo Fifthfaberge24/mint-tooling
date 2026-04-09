@@ -2,9 +2,19 @@
 import fs from 'fs/promises';
 import path from 'path';
 import readline from 'readline/promises';
+import { fileURLToPath } from 'url';
 import { stdin as input, stdout as output } from 'node:process';
 
-const rl = readline.createInterface({ input, output });
+export const TEMPLATE_OPTIONS = [
+  { key: 'blank', label: 'Blank', description: 'Empty extension (default starter)' },
+  { key: 'sensing-blocks', label: 'Sensing Blocks', description: 'Read sprite and stage state' },
+  { key: 'operators', label: 'Operators', description: 'Math and text operations' },
+  { key: 'control-flow', label: 'Control Flow', description: 'Custom loops and conditionals' },
+  { key: 'looks', label: 'Looks', description: 'Visual effects and rendering helpers' },
+  { key: 'data-storage', label: 'Data Storage', description: 'Variables and list-style state' },
+  { key: 'advanced', label: 'Advanced', description: 'Complex multi-module extension' },
+];
+export const CORE_ID_PLACEHOLDER = 'myTurboWarpExtension';
 
 /**
  * Prompt the user with a question and return their response or a default when input is empty.
@@ -12,10 +22,20 @@ const rl = readline.createInterface({ input, output });
  * @param {string} [def=''] - The default value returned when the user submits an empty response.
  * @returns {Promise<string>} A Promise that resolves to the user's input trimmed; if the user enters nothing, the provided default.
  */
-async function prompt(question, def = '') {
+async function prompt(rl, question, def = '') {
+  let closeAfter = false;
+  let reader = rl;
+  if (!reader) {
+    reader = readline.createInterface({ input, output });
+    closeAfter = true;
+  }
   const q = def ? `${question} (${def}): ` : `${question}: `;
-  const answer = await rl.question(q);
-  return (answer || def).trim();
+  try {
+    const answer = await reader.question(q);
+    return (answer || def).trim();
+  } finally {
+    if (closeAfter) reader.close();
+  }
 }
 
 /**
@@ -37,6 +57,66 @@ function toCamelCase(s) {
   );
 }
 
+export function resolveTemplateChoice(selection = '') {
+  const normalized = selection.trim().toLowerCase();
+  if (!normalized) return TEMPLATE_OPTIONS[0].key;
+
+  if (/^\d+$/.test(normalized)) {
+    const numeric = Number.parseInt(normalized, 10);
+    if (numeric >= 1 && numeric <= TEMPLATE_OPTIONS.length) {
+      return TEMPLATE_OPTIONS[numeric - 1].key;
+    }
+  }
+
+  const matched = TEMPLATE_OPTIONS.find(t => t.key === normalized);
+  if (matched) return matched.key;
+
+  throw new Error(
+    `Unknown template "${selection}". Use a number from 1-${TEMPLATE_OPTIONS.length} or a template key.`
+  );
+}
+
+function printTemplateOptions() {
+  console.log('\nChoose a template:');
+  TEMPLATE_OPTIONS.forEach((template, index) => {
+    console.log(`  ${index + 1}. ${template.label} (${template.key}) — ${template.description}`);
+  });
+}
+
+export async function scaffoldTemplate(templateKey, cwd = process.cwd()) {
+  const validTemplateKeys = new Set(TEMPLATE_OPTIONS.map(template => template.key));
+  if (!validTemplateKeys.has(templateKey)) {
+    throw new Error(
+      `Unknown template "${templateKey}". Use one of: ${TEMPLATE_OPTIONS.map(template => template.key).join(', ')}.`
+    );
+  }
+
+  const templatesRoot = path.join(cwd, 'templates');
+  const resolvedTemplatesRoot = path.resolve(templatesRoot);
+  const templateSrc = path.join(templatesRoot, templateKey, 'src');
+  const resolvedTemplateSrc = path.resolve(templateSrc);
+  const srcDir = path.join(cwd, 'src');
+
+  if (!resolvedTemplateSrc.startsWith(`${resolvedTemplatesRoot}${path.sep}`)) {
+    throw new Error(
+      `Template "${templateKey}" resolves outside the repository templates directory.`
+    );
+  }
+
+  try {
+    await fs.access(resolvedTemplateSrc);
+  } catch {
+    throw new Error(
+      `Template "${templateKey}" was not found in the repository templates directory.`
+    );
+  }
+
+  await fs.rm(srcDir, { recursive: true, force: true });
+  await fs.mkdir(srcDir, { recursive: true });
+  await fs.cp(resolvedTemplateSrc, srcDir, { recursive: true });
+  console.log(`copied template files from templates/${templateKey}/src`);
+}
+
 function validateInputs({ name, version, id }) {
   const npmNameRe = /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
   const semverRe =
@@ -46,38 +126,6 @@ function validateInputs({ name, version, id }) {
   if (!npmNameRe.test(name)) throw new Error(`Invalid npm package name: "${name}"`);
   if (!semverRe.test(version)) throw new Error(`Invalid semver version: "${version}"`);
   if (!idRe.test(id)) throw new Error(`Invalid extension id: "${id}"`);
-}
-
-/**
- * Remove all files and directories inside the project's src/ directory except src/01-core.js.
- *
- * Ensures src/ exists before attempting removals; if src/ is missing the function logs a warning and returns.
- * Throws any errors encountered other than a missing src/ directory.
- */
-async function removeOtherSrcFiles() {
-  const srcDir = path.join(process.cwd(), 'src');
-  try {
-    const entries = await fs.readdir(srcDir, { withFileTypes: true });
-    for (const e of entries) {
-      const full = path.join(srcDir, e.name);
-      if (e.isFile()) {
-        if (e.name !== '01-core.js') {
-          await fs.rm(full);
-          console.log(`removed ${path.relative(process.cwd(), full)}`);
-        }
-      } else if (e.isDirectory()) {
-        // remove directories entirely
-        await fs.rm(full, { recursive: true, force: true });
-        console.log(`removed directory ${path.relative(process.cwd(), full)}`);
-      }
-    }
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      console.warn('No src/ directory found — skipping file removal.');
-      return;
-    }
-    throw err;
-  }
 }
 
 /**
@@ -126,6 +174,44 @@ async function addHeaderToCore(displayName, author) {
 }
 
 /**
+ * Rewrite scaffolded core metadata placeholders with user-selected id and display name.
+ *
+ * @param {Object} params - Metadata replacement values.
+ * @param {string} params.id - Extension id to inject into `getInfo()`.
+ * @param {string} params.displayName - Extension display name to inject into `getInfo()`.
+ * @param {Object} [options] - Optional configuration.
+ * @param {string} [options.cwd] - Working directory to use; defaults to process.cwd().
+ */
+export async function rewriteCoreMetadata({ id, displayName }, { cwd = process.cwd() } = {}) {
+  const corePath = path.join(cwd, 'src', '01-core.js');
+  try {
+    let content = await fs.readFile(corePath, 'utf8');
+
+    content = content.replace(
+      new RegExp(`id:\\s*['"]${CORE_ID_PLACEHOLDER}['"]`),
+      `id: ${JSON.stringify(id)}`
+    );
+    content = content.replace(
+      /name:\s*Scratch\.translate\((?:'[^']*'|"[^"]*")\)/,
+      `name: Scratch.translate(${JSON.stringify(displayName)})`
+    );
+    content = content.replace(
+      /name:\s*(?:'My Extension'|"My Extension")/,
+      `name: ${JSON.stringify(displayName)}`
+    );
+
+    await fs.writeFile(corePath, content, 'utf8');
+    console.log('updated src/01-core.js metadata placeholders');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.warn('src/01-core.js not found — skipping metadata rewrite.');
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
  * Write a src/manifest.json file containing the provided extension metadata.
  *
  * @param {Object} params - Manifest fields.
@@ -156,43 +242,55 @@ async function writeManifest({ name, id, version, description, author, license, 
  * Run an interactive CLI that initializes a Mint extension project.
  *
  * Prompts the user for package and extension metadata, asks for confirmation,
- * then applies the chosen changes: updates package.json, writes src/manifest.json,
- * removes other files under src/ except src/01-core.js, and ensures an initialization
- * header is present in src/01-core.js. On completion or error the readline
- * interface is closed and the process exits with an appropriate status.
+ * then applies the chosen changes: scaffolds src/ from the selected template,
+ * rewrites scaffolded core metadata placeholders, writes src/manifest.json,
+ * updates package.json, and ensures an initialization header is present in
+ * src/01-core.js. On completion or error the readline interface is closed and
+ * the process exits with an appropriate status.
  */
 async function main() {
+  const rl = readline.createInterface({ input, output });
   try {
-    console.log('This script will help initialize a Mint extension from the template.');
+    console.log('Welcome to Mint Extension Creator!\n');
+    console.log('This script will help initialize a Mint extension from a template.');
 
-    const name = await prompt('npm package name (kebab-case)', path.basename(process.cwd()));
-    const displayName = await prompt('Extension display name', 'My Mint Extension');
-    const description = await prompt('Description', 'A Mint extension');
-    const author = await prompt('Author', '');
-    const version = await prompt('Initial version', '0.1.0');
-    const license = await prompt('License', 'LSL-1.0');
-    const url = await prompt('URL (homepage for the extension)', '');
+    printTemplateOptions();
+    const templateInput = await prompt(rl, 'Template number or key', '1');
+    const template = resolveTemplateChoice(templateInput);
+    const templateInfo = TEMPLATE_OPTIONS.find(t => t.key === template);
+    console.log(`Selected template: ${templateInfo?.label ?? template}`);
+
+    const name = await prompt(rl, 'npm package name (kebab-case)', path.basename(process.cwd()));
+    const displayName = await prompt(rl, 'Extension display name', 'My Mint Extension');
+    const description = await prompt(rl, 'Description', 'A Mint extension');
+    const author = await prompt(rl, 'Author', '');
+    const version = await prompt(rl, 'Initial version', '0.1.0');
+    const license = await prompt(rl, 'License', 'LSL-1.0');
+    const url = await prompt(rl, 'URL (homepage for the extension)', '');
     const defaultId = toCamelCase(displayName || name);
-    const id = await prompt('Extension id (camelCase, no spaces)', defaultId);
+    const id = await prompt(rl, 'Extension id (camelCase, no spaces)', defaultId);
     validateInputs({ name, version, id });
 
     console.log('\nThe script will:');
+    console.log(`- Replace src/ with files from templates/${template}/src`);
     console.log('- Update package.json with the provided values');
-    console.log("- Remove all files in src/ except 'src/01-core.js' (directories will be removed)");
     console.log('- Create src/manifest.json with basic metadata');
+    console.log('- Add an initialization header to the scaffolded src/01-core.js when missing');
 
-    const confirm = (await prompt('Proceed? (yes/no)', 'no')).toLowerCase();
+    const confirm = (await prompt(rl, 'Proceed? (yes/no)', 'no')).toLowerCase();
     if (confirm !== 'yes' && confirm !== 'y') {
       console.log('Aborted by user. No changes made.');
       process.exit(0);
     }
 
-    await removeOtherSrcFiles();
+    await scaffoldTemplate(template);
+    await rewriteCoreMetadata({ id, displayName });
     await addHeaderToCore(displayName, author);
     await writeManifest({ name: displayName, id, version, description, author, license, url });
     await updatePackageJson({ name, description, author, version });
 
     console.log('\nInitialization complete.');
+    console.log(`Created extension from '${template}' template.`);
     console.log('Next steps:');
     console.log('- Review package.json, src/manifest.json and src/01-core.js');
     console.log(
@@ -206,4 +304,10 @@ async function main() {
   }
 }
 
-main();
+const isDirectExecution =
+  process.argv[1] &&
+  import.meta.url.startsWith('file:') &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirectExecution) {
+  main();
+}

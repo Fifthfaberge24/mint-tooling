@@ -57,8 +57,12 @@ export function installScratchMock() {
   globalThis.Scratch = mock;
   globalThis.mint = {
     assets: {
-      get() { return undefined; },
-      exists() { return false; },
+      get() {
+        return undefined;
+      },
+      exists() {
+        return false;
+      },
     },
   };
 

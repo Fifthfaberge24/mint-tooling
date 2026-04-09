@@ -1,10 +1,10 @@
 # TypeScript Support
 
-Mint has optional TypeScript support.  You can write your extension in `.ts` files and Mint will transpile them to JavaScript before bundling.  Existing `.js` projects are completely unaffected — no configuration changes are required.
+Mint has optional TypeScript support. You can write your extension in `.ts` files and Mint will transpile them to JavaScript before bundling. Existing `.js` projects are completely unaffected — no configuration changes are required.
 
 ## Requirements
 
-TypeScript transpilation is handled by [`esbuild`](https://esbuild.github.io/).  Install it as a dev dependency:
+TypeScript transpilation is handled by [`esbuild`](https://esbuild.github.io/). Install it as a dev dependency:
 
 ```bash
 npm install --save-dev esbuild
@@ -12,7 +12,7 @@ npm install --save-dev esbuild
 
 > [!NOTE]
 >
-> `esbuild` performs **type stripping only** — it does not type-check your code.  Run `tsc --noEmit` (with a `tsconfig.json`) separately if you want compile-time type errors.
+> `esbuild` performs **type stripping only** — it does not type-check your code. Run `tsc --noEmit` (with a `tsconfig.json`) separately if you want compile-time type errors.
 
 ## Using TypeScript files
 
@@ -25,7 +25,7 @@ src/
   manifest.json
 ```
 
-You can mix `.js` and `.ts` files freely.  Files are sorted alphabetically before bundling, so the numeric prefix controls load order exactly as it does for JavaScript files.
+You can mix `.js` and `.ts` files freely. Files are sorted alphabetically before bundling, so the numeric prefix controls load order exactly as it does for JavaScript files.
 
 ## Type definitions
 
@@ -89,7 +89,7 @@ Scratch.extensions.register(new MyExtension());
 
 ## Build output
 
-TypeScript files are transpiled in memory before bundling — no intermediate `.js` files are written to disk.  The final output in `build/` is always plain JavaScript.
+TypeScript files are transpiled in memory before bundling — no intermediate `.js` files are written to disk. The final output in `build/` is always plain JavaScript.
 
 ## What the build does
 
@@ -103,7 +103,7 @@ The opcode and asset-reference validators scan both `.js` and `.ts` files, so al
 
 ## Linting
 
-The default ESLint configuration targets `src/` and only processes `.js` files.  To lint TypeScript files, install [`typescript-eslint`](https://typescript-eslint.io/) and extend your `eslint.config.mjs` accordingly.
+The default ESLint configuration targets `src/` and only processes `.js` files. To lint TypeScript files, install [`typescript-eslint`](https://typescript-eslint.io/) and extend your `eslint.config.mjs` accordingly.
 
 ## Recommended `tsconfig.json`
 
@@ -121,4 +121,4 @@ The default ESLint configuration targets `src/` and only processes `.js` files. 
 }
 ```
 
-With `"noEmit": true`, running `tsc` only type-checks — it does not write any files.  Mint's build pipeline handles the actual compilation via `esbuild`.
+With `"noEmit": true`, running `tsc` only type-checks — it does not write any files. Mint's build pipeline handles the actual compilation via `esbuild`.

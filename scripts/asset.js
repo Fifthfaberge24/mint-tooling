@@ -507,9 +507,7 @@ async function cmdAdd(filePath) {
   }
 
   const baseName = path.basename(absPath);
-  const relDestName = destSubdir
-    ? path.join(destSubdir, baseName).replace(/\\/g, '/')
-    : baseName;
+  const relDestName = destSubdir ? path.join(destSubdir, baseName).replace(/\\/g, '/') : baseName;
   const dest = path.join(targetDir, baseName);
 
   if (fs.existsSync(dest)) {
@@ -608,7 +606,9 @@ async function cmdRemove(assetName) {
   // Safety check — look for mint.assets.get/exists('assetName') in source files
   const refs = findReferences(assetName);
   if (refs.length > 0) {
-    console.error(col(RED, `\u2717 Cannot remove '${assetName}' \u2014 it is still referenced in:`));
+    console.error(
+      col(RED, `\u2717 Cannot remove '${assetName}' \u2014 it is still referenced in:`)
+    );
     for (const r of refs) {
       console.error(`  ${path.relative(process.cwd(), r)}`);
     }
@@ -646,7 +646,9 @@ async function main() {
       console.error('');
       console.error('Available subcommands:');
       console.error('  list              List assets in src/assets with type, size, and usage');
-      console.error('  add [file]        Copy a file into src/assets (interactive if no file given)');
+      console.error(
+        '  add [file]        Copy a file into src/assets (interactive if no file given)'
+      );
       console.error('  remove [name]     Remove an asset (interactive if no name given)');
       process.exit(1);
   }

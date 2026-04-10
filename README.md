@@ -18,3 +18,7 @@ The only monolith you'll ever have to even see is the build output!
 - **In-repo documentation:** A separate documentation repository isn't required &mdash; just edit the `/docs/` folder, and link to that in your extension _(just remember to make it a URL and not a file path)_.
 - **Extensive CI/CD:** One of Mint's main features is automation &mdash; you get CodeQL, Dependabot, auto PR checking, and more right out of the box when you use Mint as your toolchain.
 - **Template gallery:** Start quickly with extension templates for common patterns in [`templates/`](./templates/README.md).
+
+## Quick Start
+
+If you copied this repository as your project template, follow [SETUP.MD](./SETUP.MD).

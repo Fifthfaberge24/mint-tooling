@@ -150,7 +150,7 @@ function extractClassMethods(sourceFiles) {
 
     const methods = new Set();
     const methodRegex =
-      /^  (?:(?:public|private|protected|static|override)\s+)*(?:async\s+)?(\w+)\s*\([^)]*\)(?:\s*:\s*[^{\n]*)?\s*\{/gm;
+      /^ {2}(?:(?:public|private|protected|static|override)\s+)*(?:async\s+)?(\w+)\s*\([^)]*\)(?:\s*:\s*[^{\n]*)?\s*\{/gm;
     for (const m of content.matchAll(methodRegex)) {
       methods.add(m[1]);
     }

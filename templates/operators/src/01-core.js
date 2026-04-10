@@ -1,3 +1,4 @@
+/* global Scratch */
 import { average, joinText } from './02-operators.js';
 
 /**

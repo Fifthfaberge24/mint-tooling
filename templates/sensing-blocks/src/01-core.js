@@ -1,3 +1,4 @@
+/* global Scratch */
 import { getProjectTimer, getStageDimensions } from './02-sensing.js';
 
 /**

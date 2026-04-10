@@ -1,3 +1,4 @@
+/* global Scratch */
 import { cssShadow, normalizeColor } from './02-looks.js';
 
 /**

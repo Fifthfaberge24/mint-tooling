@@ -66,9 +66,15 @@ describe('build sourcemap options', () => {
       assert.ok(fs.existsSync(path.join(buildDir, 'min.extension.js.map')));
       assert.ok(fs.existsSync(path.join(buildDir, 'pretty.extension.js.map')));
 
-      const standardMap = JSON.parse(fs.readFileSync(path.join(buildDir, 'extension.js.map'), 'utf8'));
-      const minMap = JSON.parse(fs.readFileSync(path.join(buildDir, 'min.extension.js.map'), 'utf8'));
-      const prettyMap = JSON.parse(fs.readFileSync(path.join(buildDir, 'pretty.extension.js.map'), 'utf8'));
+      const standardMap = JSON.parse(
+        fs.readFileSync(path.join(buildDir, 'extension.js.map'), 'utf8')
+      );
+      const minMap = JSON.parse(
+        fs.readFileSync(path.join(buildDir, 'min.extension.js.map'), 'utf8')
+      );
+      const prettyMap = JSON.parse(
+        fs.readFileSync(path.join(buildDir, 'pretty.extension.js.map'), 'utf8')
+      );
 
       assert.ok(
         collectSourcesFromMap(standardMap).some(source => source.startsWith('src/')),

@@ -1,3 +1,4 @@
+/* global Scratch */
 import { repeatText, shouldContinue } from './02-control-flow.js';
 
 /**

@@ -507,7 +507,7 @@ const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
  * @returns {string}
  */
 function encodeVlq(value) {
-  let vlq = value < 0 ? ((-value) << 1) + 1 : value << 1;
+  let vlq = value < 0 ? (-value << 1) + 1 : value << 1;
   let encoded = '';
   do {
     let digit = vlq & 31;
@@ -776,7 +776,7 @@ async function buildExtension() {
           let gen = '  // --- Embedded assets ---\n';
           Object.keys(assets)
             .sort()
-            .forEach((key, idx, arr) => {
+            .forEach((key, idx, _arr) => {
               const fn = '__mint_asset_' + makeSafe(key) + '_' + idx;
               gen += `  function ${fn}() { return ${JSON.stringify(assets[key])}; }\n`;
             });
@@ -1005,9 +1005,9 @@ async function buildExtension() {
       const { minify } = await import('terser');
       const minifySourceMap =
         sourcemapMode && inlineSourcemapMode
-          // `content` passes the standard indexed source map object so terser can
-          // chain minified mappings back to original `src/*` modules.
-          ? { url: 'inline', content: standardMapObject }
+          ? // `content` passes the standard indexed source map object so terser can
+            // chain minified mappings back to original `src/*` modules.
+            { url: 'inline', content: standardMapObject }
           : sourcemapMode
             ? {
                 filename: 'min.extension.js',

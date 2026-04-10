@@ -1,3 +1,4 @@
+/* global Scratch */
 import { addItem, clearItems } from './02-storage.js';
 
 /**

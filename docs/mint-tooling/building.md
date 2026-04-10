@@ -79,6 +79,7 @@ You can combine watch mode with source map flags:
 npm run watch -- --sourcemap
 npm run watch -- --inline-sourcemap
 ```
+
 When caching is enabled, build output includes cache hit/miss statistics and the number of rebuilt modules.
 
 ```bash

@@ -1,3 +1,4 @@
+/* global Scratch */
 import { formatGreeting, rememberName, storedNameCount } from './02-greetings.js';
 
 /**

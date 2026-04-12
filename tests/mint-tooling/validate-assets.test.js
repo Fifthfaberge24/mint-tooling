@@ -10,7 +10,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { collectAssetReferences, validateAssetReferences } from '../scripts/validate-assets.js';
+import { collectAssetReferences, validateAssetReferences } from '../../scripts/validate-assets.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

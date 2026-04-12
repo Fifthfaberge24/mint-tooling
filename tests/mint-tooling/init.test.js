@@ -9,7 +9,7 @@ import {
   resolveTemplateChoice,
   rewriteCoreMetadata,
   scaffoldTemplate,
-} from '../scripts/init.js';
+} from '../../scripts/init.js';
 
 describe('resolveTemplateChoice()', () => {
   it('defaults to blank when selection is empty', () => {

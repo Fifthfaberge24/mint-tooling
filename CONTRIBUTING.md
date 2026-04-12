@@ -65,8 +65,15 @@ Place your test files in the `tests/` directory using the `.test.js` suffix:
 tests/
   helpers/
     mock-scratch.js   # Scratch environment mock (provided)
-  01-core.test.js     # Tests for the extension class
-  02-example-module.test.js  # Tests for helper module functions
+  01-core.test.js     # Extension scaffold tests
+  02-example-module.test.js
+  mint-tooling/
+    build-cache.test.js
+    build-report.test.js
+    build-sourcemap.test.js
+    init.test.js
+    update-mint.test.js
+    validate-assets.test.js
 ```
 
 ### Testing Helper Functions (Pure Logic)

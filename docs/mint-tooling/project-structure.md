@@ -17,6 +17,13 @@ my-extension/
       mock-scratch.js     # Scratch environment mock (provided)
     01-core.test.js
     02-example-module.test.js
+    mint-tooling/
+      build-cache.test.js
+      build-report.test.js
+      build-sourcemap.test.js
+      init.test.js
+      update-mint.test.js
+      validate-assets.test.js
   build/                  # Generated — do not edit manually
     extension.js
     min.extension.js
@@ -59,7 +66,7 @@ Mint creates this directory automatically. Never commit the files here unless yo
 
 ## The `tests/` directory
 
-Test files live here. The test runner picks up any file ending in `.test.js`, recursively. The `helpers/` subdirectory contains the Scratch environment mock that Mint ships with the template. See [Testing](./testing.md) for more.
+Test files live here. The test runner picks up any file ending in `.test.js`, recursively. Tooling tests are under `tests/mint-tooling/`, while extension scaffold tests and the Scratch mock helper stay at the `tests/` root. See [Testing](./testing.md) for more.
 
 ## The `scripts/` directory
 

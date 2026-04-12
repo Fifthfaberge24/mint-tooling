@@ -11,18 +11,22 @@ const execFile = promisify(execFileCallback);
 const DEFAULT_REMOTE = 'https://github.com/triflare/mint-tooling.git';
 const DEFAULT_REF = 'main';
 const DOCS_MINT_TOOLING_PATH = 'docs/mint-tooling';
-const DEFAULT_CHECKOUT_PATHS = [
-  '.github/workflows',
-  '.github/dependabot.yml',
-  '.github/pull_request_template.md',
-  '.prettierrc.json',
-  DOCS_MINT_TOOLING_PATH,
-  'eslint',
-  'eslint.config.mjs',
-  'scripts',
-  'templates',
-  'tsconfig.json',
-  'types',
+const DEFAULT_EXCLUDED_PATHS = [
+  '.mintignore',
+  'README.md',
+  'SETUP.MD',
+  'QUICKSTART.md',
+  'LICENSE',
+  'CONTRIBUTING.md',
+  'src',
+  'tests/01-core.test.js',
+  'tests/02-example-module.test.js',
+  'tests/helpers',
+  'build',
+  'package.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
 ];
 const DEFAULT_PATH_ALIASES = {
   [DOCS_MINT_TOOLING_PATH]: 'documentation/mint-tooling',
@@ -146,6 +150,7 @@ function assertSafeRepoRelativePath(value, fieldName) {
     normalized === '.' ||
     path.posix.isAbsolute(normalized) ||
     path.win32.isAbsolute(normalized) ||
+    normalized.startsWith(':') ||
     normalized === '..' ||
     normalized.startsWith('../') ||
     normalized.includes('/../')
@@ -170,19 +175,27 @@ export function shouldIgnorePath(repoPath, ignorePatterns) {
   });
 }
 
-export function resolveCheckoutPaths(basePaths, ignorePatterns) {
-  const uniquePaths = [
-    ...new Set(basePaths.map(value => assertSafeRepoRelativePath(value, 'checkoutPaths'))),
-  ];
-  return uniquePaths.filter(repoPath => !shouldIgnorePath(repoPath, ignorePatterns));
+export function resolveExcludedPaths(basePaths, extraPatterns = []) {
+  const uniquePaths = new Set(
+    basePaths.map(value => assertSafeRepoRelativePath(value, 'excludePaths'))
+  );
+  const safeExtraPatterns = extraPatterns.map(value =>
+    assertSafeRepoRelativePath(value, '.mintignore')
+  );
+  for (const pattern of safeExtraPatterns) uniquePaths.add(pattern);
+  return [...uniquePaths];
 }
 
-export async function detectAutoPathAliases(repoRoot, checkoutPaths) {
+export function buildCheckoutPathspec(excludedPaths) {
+  return ['.', ...excludedPaths.map(repoPath => `:(exclude)${repoPath}`)];
+}
+
+export async function detectAutoPathAliases(repoRoot, excludedPaths) {
   const aliases = {};
 
   const docsPath = path.join(repoRoot, 'docs', 'mint-tooling');
   const documentationPath = path.join(repoRoot, 'documentation', 'mint-tooling');
-  if (checkoutPaths.includes(DOCS_MINT_TOOLING_PATH)) {
+  if (!shouldIgnorePath(DOCS_MINT_TOOLING_PATH, excludedPaths)) {
     const docsExists = await fs
       .access(docsPath)
       .then(() => true)
@@ -203,10 +216,12 @@ async function loadUpdateConfig(repoRoot) {
   const packageJsonPath = path.join(repoRoot, 'package.json');
   const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
   const configured = packageJson?.mint?.updateMint ?? {};
-  const configuredPaths = configured.checkoutPaths ?? DEFAULT_CHECKOUT_PATHS;
-  const configuredAliases = configured.pathAliases ?? {};
+  const rawExcludePaths = configured.excludePaths;
+  const rawPathAliases = configured.pathAliases;
+  const configuredPaths = rawExcludePaths === undefined ? DEFAULT_EXCLUDED_PATHS : rawExcludePaths;
+  const configuredAliases = rawPathAliases === undefined ? {} : rawPathAliases;
   if (!Array.isArray(configuredPaths)) {
-    throw new Error('package.json mint.updateMint.checkoutPaths must be an array');
+    throw new Error('package.json mint.updateMint.excludePaths must be an array');
   }
   if (
     configuredAliases === null ||
@@ -230,20 +245,17 @@ async function loadUpdateConfig(repoRoot) {
       `Failed to read ${mintIgnorePath} (${error.code ?? 'unknown'}): ${error.message}`
     );
   });
-  const ignorePatterns = parseMintIgnore(mintIgnoreContent).map(pattern =>
-    assertSafeRepoRelativePath(pattern, '.mintignore')
-  );
-
-  const checkoutPaths = resolveCheckoutPaths(configuredPaths, ignorePatterns);
-  const autoAliases = await detectAutoPathAliases(repoRoot, checkoutPaths);
+  const ignorePatterns = parseMintIgnore(mintIgnoreContent);
+  const excludedPaths = resolveExcludedPaths(configuredPaths, ignorePatterns);
+  const autoAliases = await detectAutoPathAliases(repoRoot, excludedPaths);
   const pathAliases = { ...autoAliases, ...safeAliases };
 
-  return { checkoutPaths, pathAliases, ignorePatterns };
+  return { excludedPaths, pathAliases };
 }
 
-async function applyPathAliases(repoRoot, pathAliases, checkoutPaths) {
+async function applyPathAliases(repoRoot, pathAliases, excludedPaths) {
   for (const [sourcePath, targetPath] of Object.entries(pathAliases)) {
-    if (!checkoutPaths.includes(sourcePath) || sourcePath === targetPath) continue;
+    if (shouldIgnorePath(sourcePath, excludedPaths) || sourcePath === targetPath) continue;
 
     const sourceAbsPath = path.join(repoRoot, sourcePath);
     const targetAbsPath = path.join(repoRoot, targetPath);
@@ -305,7 +317,8 @@ async function main() {
     const cwd = process.cwd();
     await runGit(['rev-parse', '--is-inside-work-tree'], cwd);
     const repoRoot = await runGit(['rev-parse', '--show-toplevel'], cwd);
-    const { checkoutPaths, pathAliases, ignorePatterns } = await loadUpdateConfig(repoRoot);
+    const { excludedPaths, pathAliases } = await loadUpdateConfig(repoRoot);
+    const checkoutPathspec = buildCheckoutPathspec(excludedPaths);
     console.log(`Fetching Mint updates from ${remote} (${ref})...`);
     await runGit(['fetch', remote, ref], repoRoot);
     const fetchedCommit = await runGit(['rev-parse', '--short', 'FETCH_HEAD'], repoRoot);
@@ -334,12 +347,10 @@ async function main() {
     const localPackagePath = path.join(repoRoot, 'package.json');
     const localPackageJson = JSON.parse(await fs.readFile(localPackagePath, 'utf8'));
     const mergedPackageJson = mergePackageJson(localPackageJson, upstreamPackageJson);
-    const managedPathDiff = checkoutPaths.length
-      ? await runGit(
-          ['diff', '--name-only', 'HEAD', 'FETCH_HEAD', '--', ...checkoutPaths],
-          repoRoot
-        )
-      : '';
+    const managedPathDiff = await runGit(
+      ['diff', '--name-only', 'HEAD', 'FETCH_HEAD', '--', ...checkoutPathspec],
+      repoRoot
+    );
     const hasManagedPathUpdates = managedPathDiff.trim().length > 0;
     const hasPackageJsonUpdates = hasToolingPackageUpdates(localPackageJson, mergedPackageJson);
     if (!hasManagedPathUpdates && !hasPackageJsonUpdates) {
@@ -358,9 +369,8 @@ async function main() {
     }
 
     if (dryRun) {
-      console.log(`[dry-run] Would check out: ${checkoutPaths.join(', ')}`);
-      if (ignorePatterns.length > 0) {
-        console.log(`[dry-run] Ignoring paths from .mintignore: ${ignorePatterns.join(', ')}`);
+      if (excludedPaths.length > 0) {
+        console.log(`[dry-run] Excluding paths: ${excludedPaths.join(', ')}`);
       }
       if (Object.keys(pathAliases).length > 0) {
         console.log(`[dry-run] Applying path aliases: ${JSON.stringify(pathAliases)}`);
@@ -370,26 +380,17 @@ async function main() {
       return;
     }
 
-    if (checkoutPaths.length > 0) {
-      const statusOutput = await runGit(
-        ['status', '--porcelain', '--', ...checkoutPaths],
-        repoRoot
-      );
-      if (statusOutput) {
-        throw new Error(
-          `Uncommitted or modified files detected in Mint-managed paths: ${checkoutPaths.join(
-            ', '
-          )}. Commit, stash, or remove local changes before running update:mint.`
-        );
-      }
-
-      await runGit(['checkout', 'FETCH_HEAD', '--', ...checkoutPaths], repoRoot);
-      await applyPathAliases(repoRoot, pathAliases, checkoutPaths);
-    } else {
-      console.log(
-        'No Mint-managed paths selected for checkout after applying configuration/ignore rules.'
+    const statusOutput = await runGit(
+      ['status', '--porcelain', '--', ...checkoutPathspec],
+      repoRoot
+    );
+    if (statusOutput) {
+      throw new Error(
+        `Uncommitted or modified files detected in Mint-managed paths. Commit, stash, or remove local changes before running update:mint.`
       );
     }
+    await runGit(['checkout', 'FETCH_HEAD', '--', ...checkoutPathspec], repoRoot);
+    await applyPathAliases(repoRoot, pathAliases, excludedPaths);
     await fs.writeFile(localPackagePath, `${JSON.stringify(mergedPackageJson, null, 2)}\n`, 'utf8');
 
     console.log(`Updated Mint tooling from commit ${fetchedCommit}.`);

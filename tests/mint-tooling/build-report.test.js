@@ -6,7 +6,7 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
-const REPO_ROOT = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
+const REPO_ROOT = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));
 
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
@@ -42,7 +42,7 @@ describe('enhanced build report', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),
@@ -106,7 +106,7 @@ describe('enhanced build report', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),
@@ -148,7 +148,7 @@ describe('enhanced build report', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),
@@ -194,7 +194,7 @@ describe('enhanced build report', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),
@@ -236,7 +236,7 @@ describe('enhanced build report', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@triflare/mint-tooling",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A simple and painless custom TurboWarp extension development platform, powered by bundling.",
   "main": "build/extension.js",
   "scripts": {

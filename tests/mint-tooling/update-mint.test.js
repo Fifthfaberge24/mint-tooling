@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
+  buildCheckoutPathspec,
   detectAutoPathAliases,
   getMintToolingVersion,
   hasToolingPackageUpdates,
@@ -12,9 +13,9 @@ import {
   mergePackageJson,
   parseMintIgnore,
   parseUpdateArgs,
-  resolveCheckoutPaths,
+  resolveExcludedPaths,
   shouldIgnorePath,
-} from '../scripts/update-mint.js';
+} from '../../scripts/update-mint.js';
 
 const TEMP_DIR_PREFIX = 'mint-update-test-';
 
@@ -199,17 +200,28 @@ describe('mint ignore and path resolution', () => {
     assert.equal(shouldIgnorePath('templates', ignorePatterns), false);
   });
 
-  it('resolves unique checkout paths and applies ignore rules', () => {
-    assert.deepEqual(resolveCheckoutPaths(['scripts', 'scripts', 'templates'], ['scripts']), [
-      'templates',
+  it('resolves unique excluded paths and appends .mintignore entries', () => {
+    assert.deepEqual(resolveExcludedPaths(['src', 'src', 'tests'], ['docs/mint-tooling']), [
+      'src',
+      'tests',
+      'docs/mint-tooling',
     ]);
   });
 
   it('rejects traversal paths after normalization', () => {
     assert.throws(
-      () => resolveCheckoutPaths(['foo/./../../bar'], []),
+      () => resolveExcludedPaths(['foo/./../../bar'], []),
       /must stay inside the repository/
     );
+    assert.throws(() => resolveExcludedPaths([':!src'], []), /must stay inside the repository/);
+  });
+
+  it('builds checkout pathspec with exclude magic entries', () => {
+    assert.deepEqual(buildCheckoutPathspec(['src', 'tests/helpers']), [
+      '.',
+      ':(exclude)src',
+      ':(exclude)tests/helpers',
+    ]);
   });
 });
 
@@ -219,7 +231,7 @@ describe('detectAutoPathAliases()', () => {
     const documentationPath = path.join(root, 'documentation', 'mint-tooling');
     await fsPromises.mkdir(documentationPath, { recursive: true });
     try {
-      const aliases = await detectAutoPathAliases(root, ['docs/mint-tooling', 'scripts']);
+      const aliases = await detectAutoPathAliases(root, ['src']);
       assert.deepEqual(aliases, {
         'docs/mint-tooling': 'documentation/mint-tooling',
       });
@@ -235,7 +247,23 @@ describe('detectAutoPathAliases()', () => {
   it('returns no aliases when documentation fallback does not exist', async () => {
     const root = await fsPromises.mkdtemp(path.join(os.tmpdir(), TEMP_DIR_PREFIX));
     try {
-      const aliases = await detectAutoPathAliases(root, ['docs/mint-tooling', 'scripts']);
+      const aliases = await detectAutoPathAliases(root, ['src']);
+      assert.deepEqual(aliases, {});
+    } finally {
+      try {
+        await fsPromises.rm(root, { recursive: true, force: true });
+      } catch (error) {
+        console.warn(`Failed to cleanup temp directory ${root}:`, error);
+      }
+    }
+  });
+
+  it('returns no aliases when docs path is excluded', async () => {
+    const root = await fsPromises.mkdtemp(path.join(os.tmpdir(), TEMP_DIR_PREFIX));
+    const documentationPath = path.join(root, 'documentation', 'mint-tooling');
+    await fsPromises.mkdir(documentationPath, { recursive: true });
+    try {
+      const aliases = await detectAutoPathAliases(root, ['docs']);
       assert.deepEqual(aliases, {});
     } finally {
       try {

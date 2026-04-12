@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
+const REPO_ROOT = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..'));
 
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
@@ -42,7 +42,7 @@ describe('build cache', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),
@@ -81,7 +81,7 @@ describe('build cache', () => {
       copyDir(REPO_ROOT, tempDir);
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
-      } catch (err) {
+      } catch (_err) {
         try {
           fs.symlinkSync(
             path.join(REPO_ROOT, 'node_modules'),

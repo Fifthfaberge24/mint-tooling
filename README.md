@@ -1,8 +1,21 @@
 <p align="center">
-  <img src="assets/mint/logo-transparent.png" alt="Mint logo" width="100">
+  <img src="assets/logo.svg" alt="Mint logo" width="75">
 </p>
 
-# Introduction to Mint
+<h1 align="center">
+  Mint Tooling
+</h1>
+
+<p align="center">
+  <a href="https://github.com/triflare/mint-tooling/actions/workflows/ci.yml">
+    <img src="https://github.com/triflare/mint-tooling/actions/workflows/ci.yml/badge.svg" alt="Continuous integration">
+  </a>
+    <a href="https://github.com/triflare/mint-tooling/actions/workflows/cd.yml">
+    <img src="https://github.com/triflare/mint-tooling/actions/workflows/cd.yml/badge.svg" alt="Continuous deployment">
+  </a>
+</p>
+
+## Introduction
 
 > A simple and painless custom TurboWarp extension development platform, powered by bundling.
 

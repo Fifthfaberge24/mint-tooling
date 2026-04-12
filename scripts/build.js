@@ -26,6 +26,9 @@ const OUTPUT_MAX_FILE_MAP = `${OUTPUT_MAX_FILE}.map`;
 // Bundle size threshold (in bytes) above which the minified output is recommended for production
 const RECOMMEND_MIN_THRESHOLD_BYTES = 50 * 1024; // 50 KB
 
+// Per-module size threshold (in bytes) above which a suggestion is emitted in the build report
+const LARGE_MODULE_THRESHOLD_BYTES = 10 * 1024; // 10 KB
+
 // Width (in characters) of the failure/recovery banner lines
 const BANNER_WIDTH = 62;
 
@@ -376,8 +379,15 @@ async function transpileTypeScript(content, filePath) {
  *
  * @param {{ standard: number|null, min: number|null, pretty: number|null }} sizes - byte counts for each artifact (null = not generated)
  * @param {{ enabled: boolean, inline: boolean, standard: boolean, min: boolean, pretty: boolean }} sourcemaps
+ * @param {{ modules: Array<{ filename: string, outputBytes: number, sourceBytes: number }>, assets: Array<{ path: string, sizeBytes: number, mimeType: string }> }} bundleAnalysis
+ * @param {number|null} previousStandardBytes - standard artifact size from the previous build (null = no history)
  */
-function generateBuildReport(sizes, sourcemaps) {
+function generateBuildReport(
+  sizes,
+  sourcemaps,
+  bundleAnalysis = { modules: [], assets: [] },
+  previousStandardBytes = null
+) {
   const formatBytes = bytes =>
     bytes !== null ? `${(bytes / 1024).toFixed(2)} KB` : '_not generated_';
 
@@ -388,6 +398,11 @@ function generateBuildReport(sizes, sourcemaps) {
     standardBytes !== null && standardBytes >= RECOMMEND_MIN_THRESHOLD_BYTES && minAvailable
       ? '`min.extension.js`'
       : '`extension.js`';
+
+  const modules = bundleAnalysis.modules || [];
+  const assets = bundleAnalysis.assets || [];
+
+  // ── Output Artifacts table ──────────────────────────────────────────────────
 
   const rows = [
     [
@@ -419,11 +434,188 @@ function generateBuildReport(sizes, sourcemaps) {
 
   const table = [`| ${header} |`, `| ${separator} |`, ...tableRows.map(r => `| ${r} |`)].join('\n');
 
+  // ── Summary ─────────────────────────────────────────────────────────────────
+
+  const moduleCount = modules.length;
+  const assetCount = assets.length;
+  const totalAssetBytes = assets.reduce((sum, a) => sum + a.sizeBytes, 0);
+
+  let sizeChangeLine = '';
+  if (previousStandardBytes !== null && standardBytes !== null) {
+    const delta = standardBytes - previousStandardBytes;
+    const absDelta = Math.abs(delta);
+    if (delta < 0) {
+      sizeChangeLine = ` (⬇️ ${formatBytes(absDelta)} smaller than last build)`;
+    } else if (delta > 0) {
+      sizeChangeLine = ` (⬆️ ${formatBytes(absDelta)} larger than last build)`;
+    } else {
+      sizeChangeLine = ` (unchanged from last build)`;
+    }
+  }
+
+  const summaryLines = [
+    '## Summary',
+    '',
+    `- **Total size:** ${formatBytes(standardBytes)}${sizeChangeLine}`,
+    `- **Modules:** ${moduleCount} source file${moduleCount !== 1 ? 's' : ''}`,
+  ];
+  if (assetCount > 0) {
+    summaryLines.push(
+      `- **Embedded assets:** ${assetCount} file${assetCount !== 1 ? 's' : ''} (${formatBytes(totalAssetBytes)} uncompressed)`
+    );
+  }
+
+  // ── Module Breakdown ─────────────────────────────────────────────────────────
+
+  const moduleSectionLines = [];
+  if (modules.length > 0) {
+    const totalModuleOutputBytes = modules.reduce((sum, m) => sum + m.outputBytes, 0);
+    const maxModuleBytes = Math.max(...modules.map(m => m.outputBytes));
+    const BAR_WIDTH = 20;
+
+    const makeBar = bytes => {
+      const filled = maxModuleBytes > 0 ? Math.round((bytes / maxModuleBytes) * BAR_WIDTH) : 0;
+      return '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
+    };
+
+    const modRows = modules.map(m => [
+      `\`${m.filename}\``,
+      formatBytes(m.outputBytes),
+      totalModuleOutputBytes > 0
+        ? `${((m.outputBytes / totalModuleOutputBytes) * 100).toFixed(1)}%`
+        : '0.0%',
+    ]);
+
+    const modColWidths = modRows.reduce(
+      (acc, row) => row.map((cell, i) => Math.max(acc[i], cell.length)),
+      ['Module'.length, 'Bundle size'.length, '% of modules'.length]
+    );
+    const modPad = (str, width) => str + ' '.repeat(width - str.length);
+    const modSeparator = modColWidths.map(w => '-'.repeat(w)).join(' | ');
+    const modHeader = modColWidths
+      .map((w, i) => modPad(['Module', 'Bundle size', '% of modules'][i], w))
+      .join(' | ');
+    const modTableRows = modRows.map(row =>
+      row.map((cell, i) => modPad(cell, modColWidths[i])).join(' | ')
+    );
+    const modTable = [
+      `| ${modHeader} |`,
+      `| ${modSeparator} |`,
+      ...modTableRows.map(r => `| ${r} |`),
+    ].join('\n');
+
+    moduleSectionLines.push(
+      '## Module Breakdown',
+      '',
+      modTable,
+      '',
+      '```',
+      ...modules.map(m => {
+        const bar = makeBar(m.outputBytes);
+        const label = m.filename.padEnd(30);
+        return `${label} ${bar} ${formatBytes(m.outputBytes)}`;
+      }),
+      '```'
+    );
+  }
+
+  // ── Embedded Assets ──────────────────────────────────────────────────────────
+
+  const assetSectionLines = [];
+  if (assets.length > 0) {
+    const assetRows = assets.map(a => [`\`${a.path}\``, a.mimeType, formatBytes(a.sizeBytes)]);
+    const assetColWidths = assetRows.reduce(
+      (acc, row) => row.map((cell, i) => Math.max(acc[i], cell.length)),
+      ['Asset'.length, 'Type'.length, 'Size'.length]
+    );
+    const assetPad = (str, width) => str + ' '.repeat(width - str.length);
+    const assetSeparator = assetColWidths.map(w => '-'.repeat(w)).join(' | ');
+    const assetHeader = assetColWidths
+      .map((w, i) => assetPad(['Asset', 'Type', 'Size'][i], w))
+      .join(' | ');
+    const assetTableRows = assetRows.map(row =>
+      row.map((cell, i) => assetPad(cell, assetColWidths[i])).join(' | ')
+    );
+    const assetTable = [
+      `| ${assetHeader} |`,
+      `| ${assetSeparator} |`,
+      ...assetTableRows.map(r => `| ${r} |`),
+    ].join('\n');
+
+    assetSectionLines.push('## Embedded Assets', '', assetTable);
+  }
+
+  // ── Optimization Suggestions ─────────────────────────────────────────────────
+
+  const suggestions = [];
+  const largeModules = modules.filter(m => m.outputBytes > LARGE_MODULE_THRESHOLD_BYTES);
+  if (largeModules.length === 0 && modules.length > 0) {
+    suggestions.push(
+      `- ✓ All modules are below the ${(LARGE_MODULE_THRESHOLD_BYTES / 1024).toFixed(0)} KB threshold`
+    );
+  }
+  for (const m of largeModules) {
+    suggestions.push(
+      `- ⚠️  Large module: \`${m.filename}\` (${formatBytes(m.outputBytes)}) — consider splitting into smaller modules`
+    );
+  }
+
+  if (assetCount > 0) {
+    suggestions.push(
+      `- ℹ️  Embedded assets: ${formatBytes(totalAssetBytes)} total source asset size — consider loading large assets externally if size is a concern`
+    );
+  }
+
+  if (
+    previousStandardBytes !== null &&
+    standardBytes !== null &&
+    standardBytes > previousStandardBytes * 1.1
+  ) {
+    suggestions.push(
+      `- ⚠️  Bundle grew by more than 10% since the last build — check for new large modules or assets`
+    );
+  }
+
+  const optimizationLines =
+    suggestions.length > 0 ? ['## Optimization Suggestions', '', ...suggestions] : [];
+
+  // ── Size Trend ───────────────────────────────────────────────────────────────
+
+  const trendLines = [];
+  if (previousStandardBytes !== null && standardBytes !== null) {
+    const MAX_BAR = 30;
+    const maxSize = Math.max(standardBytes, previousStandardBytes);
+    const currentFilled = maxSize > 0 ? Math.round((standardBytes / maxSize) * MAX_BAR) : 0;
+    const previousFilled =
+      maxSize > 0 ? Math.round((previousStandardBytes / maxSize) * MAX_BAR) : 0;
+    const currentBar = '█'.repeat(currentFilled) + '░'.repeat(Math.max(0, MAX_BAR - currentFilled));
+    const previousBar =
+      '█'.repeat(previousFilled) + '░'.repeat(Math.max(0, MAX_BAR - previousFilled));
+    const delta = standardBytes - previousStandardBytes;
+    const sign = delta >= 0 ? '+' : '';
+    trendLines.push(
+      '## Size Trend',
+      '',
+      '```',
+      `Previous:  ${previousBar}  ${formatBytes(previousStandardBytes)}`,
+      `Current:   ${currentBar}  ${formatBytes(standardBytes)} (${sign}${(delta / 1024).toFixed(2)} KB)`,
+      '```'
+    );
+  }
+
+  // ── Assemble report ──────────────────────────────────────────────────────────
+
   const report = [
     '# Build Report',
     '',
     `Generated: ${new Date().toUTCString()}`,
     '',
+    ...summaryLines,
+    '',
+    ...(moduleSectionLines.length > 0 ? [...moduleSectionLines, ''] : []),
+    ...(assetSectionLines.length > 0 ? [...assetSectionLines, ''] : []),
+    ...(optimizationLines.length > 0 ? [...optimizationLines, ''] : []),
+    ...(trendLines.length > 0 ? [...trendLines, ''] : []),
     '## Output Artifacts',
     '',
     table,
@@ -625,6 +817,9 @@ async function buildExtension() {
       previousCache.buildScriptHash === buildInputs.buildScriptHash;
     const previousSourceHashes = cacheCompatible ? previousCache.sourceHashes || {} : {};
     const previousModuleCache = cacheCompatible ? previousCache.modules || {} : {};
+    const previousStandardBytes = cacheCompatible
+      ? (previousCache.sizeHistory?.lastStandardBytes ?? null)
+      : null;
     const sourceSetChanged =
       Object.keys(previousSourceHashes).length !== sourceFiles.length ||
       Object.keys(previousSourceHashes).some(file => !sourceFiles.includes(file));
@@ -747,6 +942,7 @@ async function buildExtension() {
     const MINT_STUB =
       '  const mint = { assets: { get() { return undefined; }, exists() { return false; } } };\n\n';
     let assetsCode = MINT_STUB;
+    const bundleAnalysis = { modules: [], assets: [] };
     try {
       const assetsDir = path.join(SRC_DIR, 'assets');
       if (fs.existsSync(assetsDir)) {
@@ -768,6 +964,7 @@ async function buildExtension() {
             const data = fs.readFileSync(f);
             const b64 = data.toString('base64');
             assets[rel] = `data:${mime};base64,${b64}`;
+            bundleAnalysis.assets.push({ path: rel, sizeBytes: data.length, mimeType: mime });
           });
 
           // Generate JS code that defines functions for each asset and the mint API
@@ -835,6 +1032,11 @@ async function buildExtension() {
         cacheHits += 1;
         output += cachedModule.transformed;
         nextModuleCache[file] = cachedModule;
+        bundleAnalysis.modules.push({
+          filename,
+          outputBytes: Buffer.byteLength(cachedModule.transformed, 'utf8'),
+          sourceBytes: Buffer.byteLength(sourceContent, 'utf8'),
+        });
         continue;
       }
 
@@ -879,6 +1081,11 @@ async function buildExtension() {
         contentHash: buildInputs.sourceHashes[file],
         transformed: moduleOutput,
       };
+      bundleAnalysis.modules.push({
+        filename,
+        outputBytes: Buffer.byteLength(moduleOutput, 'utf8'),
+        sourceBytes: Buffer.byteLength(sourceContent, 'utf8'),
+      });
     }
 
     // Close IIFE
@@ -939,7 +1146,7 @@ async function buildExtension() {
     }
 
     fs.writeFileSync(OUTPUT_FILE, standardOutput, 'utf8');
-    artifactSizes.standard = standardOutput.length;
+    artifactSizes.standard = Buffer.byteLength(standardOutput, 'utf8');
     const wroteStandardExternalMap = Boolean(sourcemapMode && !inlineSourcemapMode && standardMap);
 
     if (wroteStandardExternalMap) {
@@ -991,7 +1198,7 @@ async function buildExtension() {
         : wrotePrettyExternalMap;
       const maxSize = (prettyOutput.length / 1024).toFixed(2);
       info.push(`Maximized output created: ${OUTPUT_MAX_FILE} (${maxSize} KB)`);
-      artifactSizes.pretty = prettyOutput.length;
+      artifactSizes.pretty = Buffer.byteLength(prettyOutput, 'utf8');
     } catch (err) {
       if (err.code === 'ERR_MODULE_NOT_FOUND') {
         console.warn('        (Skipping maximization: "prettier" not found)');
@@ -1043,7 +1250,7 @@ async function buildExtension() {
         }
         const minSize = (minOutput.length / 1024).toFixed(2);
         info.push(`Minified output created: ${OUTPUT_MIN_FILE} (${minSize} KB)`);
-        artifactSizes.min = minOutput.length;
+        artifactSizes.min = Buffer.byteLength(minOutput, 'utf8');
       } else {
         console.warn('✗ Minification produced no code');
       }
@@ -1056,7 +1263,7 @@ async function buildExtension() {
     }
 
     // --- Build Report ---
-    generateBuildReport(artifactSizes, sourcemapStates);
+    generateBuildReport(artifactSizes, sourcemapStates, bundleAnalysis, previousStandardBytes);
 
     if (useCache) {
       const total = cacheHits + cacheMisses;
@@ -1065,6 +1272,9 @@ async function buildExtension() {
       console.log(`Rebuilt ${rebuiltModules} module${rebuiltModules === 1 ? '' : 's'}`);
       saveBuildCache({
         version: 1,
+        ...(artifactSizes.standard !== null
+          ? { sizeHistory: { lastStandardBytes: artifactSizes.standard } }
+          : {}),
         buildScriptHash: buildInputs.buildScriptHash,
         sourceHashes: buildInputs.sourceHashes,
         assetHashes: buildInputs.assetHashes,

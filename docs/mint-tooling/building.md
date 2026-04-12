@@ -58,12 +58,16 @@ If you ran `npm ci`, you already have both `terser` and `prettier` and all three
 
 ## Build report
 
-After every successful build, Mint writes `build/BUILD_REPORT.md`. Open it to see the size of each artifact and a tailored recommendation:
+After every successful build, Mint writes `build/BUILD_REPORT.md`. Open it to see a full bundle analysis:
 
-- If `extension.js` exceeds 50 KB and a minified output was produced, the report recommends `min.extension.js` for production.
-- Otherwise, `extension.js` is recommended.
-- `pretty.extension.js` is always the recommendation for debugging.
-- The report also includes a **Source Maps** section showing whether maps were generated inline or as external files.
+- **Summary** — total bundle size (with a size-change indicator when a previous build exists), module count, and embedded asset count.
+- **Module Breakdown** — a table showing each source module's contribution to the bundle with an ASCII bar chart visualising relative sizes.
+- **Embedded Assets** — a table listing all files bundled from `src/assets/`, their MIME types, and uncompressed sizes (only shown when assets are present).
+- **Optimization Suggestions** — automatically generated hints, such as warnings for modules that exceed 10 KB or a note about the asset-to-code ratio.
+- **Size Trend** — a before/after bar chart comparing the current build with the previous one (shown when size history from a previous cache-backed build is available).
+- **Output Artifacts** — sizes of all generated files (`extension.js`, `min.extension.js`, `pretty.extension.js`).
+- **Recommendations** — which artifact to use for production vs. debugging, based on bundle size.
+- **Source Maps** — whether source maps were generated inline or as external files.
 
 ## Watch mode
 

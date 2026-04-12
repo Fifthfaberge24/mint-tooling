@@ -3,6 +3,15 @@
   "singleQuote": true,
   "tabWidth": 2,
   "trailingComma": "es5",
+  "endOfLine": "auto",
   "printWidth": 100,
-  "arrowParens": "avoid"
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": "src/**/*.js",
+      "options": {
+        "printWidth": 90
+      }
+    }
+  ]
 }

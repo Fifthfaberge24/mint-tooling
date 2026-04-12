@@ -47,6 +47,46 @@ Triflare believes in quality over quantity. We want to keep our tools opinionate
 
 Mint ships a built-in unit-test scaffold powered by Node's native test runner (`node:test`). No extra frameworks or configuration files are needed.
 
+## Linting & Formatting Presets
+
+Mint ships TurboWarp-focused ESLint defaults in `eslint.config.mjs`, including checks for:
+
+- `turbowarp/require-getinfo`
+- `turbowarp/opcode-naming`
+- `turbowarp/block-type-match`
+- `turbowarp/no-sync-in-hat`
+- `turbowarp/translate-strings`
+- `turbowarp/valid-argument-types`
+- `turbowarp/no-heavy-computation-in-reporter`
+- `turbowarp/no-new-syntax`
+- `turbowarp/no-xmlhttprequest`
+- `turbowarp/use-scratch-vm`
+- `turbowarp/use-scratch-fetch`
+- `turbowarp/use-scratch-open-window`
+- `turbowarp/use-scratch-redirect`
+- `turbowarp/check-can-fetch`
+- `turbowarp/no-translate-setup`
+- `turbowarp/no-translate-alias`
+- `turbowarp/should-not-translate`
+
+You can customize lint severities with `.mintrc.json`:
+
+```json
+{
+  "lint": {
+    "rules": {
+      "turbowarp/require-getinfo": "error",
+      "turbowarp/opcode-naming": "warn"
+    }
+  }
+}
+```
+
+Prettier is also pre-configured for extension development in `.prettierrc.json` (including
+`src/**/*.js` overrides for consistent `getInfo()` block formatting). Customize formatting directly
+in `.prettierrc.json` as needed. Use `.prettierignore` to keep generated files and docs out of
+format runs.
+
 ### Running Tests
 
 ```bash

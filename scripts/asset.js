@@ -145,7 +145,7 @@ function findCandidateFiles(baseDir, maxDepth = 4, depth = 0) {
  * @param {string} menuPrompt
  * @returns {Promise<*>}
  */
-async function interactiveSelect(items, menuPrompt) {
+function interactiveSelect(items, menuPrompt) {
   if (items.length === 0) return null;
   if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
 

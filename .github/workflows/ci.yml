@@ -264,20 +264,20 @@ jobs:
 
       - name: Validate manifest (ID & version)
         run: |
-          node -e "
-            const m = require('./src/manifest.json');
-            let failed = false;
-            // Check: ID must start with a letter and contain only letters, numbers, or underscores
-            if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(m.id)) {
-              console.error(`::error file=src/manifest.json::Invalid ID format: "${m.id}". Must start with a letter and contain only letters, numbers, or underscores.`);
-              failed = true;
-            }
-            if (!/^\d+\.\d+\.\d+/.test(m.version)) {
-              console.error(\`::error file=src/manifest.json::Invalid version: \"\${m.version}\". Use SemVer (e.g. 1.0.0).\`);
-              failed = true;
-            }
-            if (failed) process.exit(1);
-          "
+          node <<'EOF'
+          const m = require('./src/manifest.json');
+          let failed = false;
+          // Check: ID must start with a letter and contain only letters, numbers, or underscores
+          if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(m.id)) {
+            console.error(`::error file=src/manifest.json::Invalid ID format: "${m.id}". Must start with a letter and contain only letters, numbers, or underscores.`);
+            failed = true;
+          }
+          if (!/^\d+\.\d+\.\d+/.test(m.version)) {
+            console.error(`::error file=src/manifest.json::Invalid version: "${m.version}". Use SemVer (e.g. 1.0.0).`);
+            failed = true;
+          }
+          if (failed) process.exit(1);
+          EOF
 
       - name: Upload build artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
@@ -302,60 +302,45 @@ jobs:
             });
 
   # ------------------------------------------------------------------
-  # JOB 5: Manifest version bump check
+  # JOB 5: PR manifest version bump check
   # ------------------------------------------------------------------
-  manifest-version-check:
-    name: Check manifest version bump
+  manifest-version-pr-check:
+    name: Enforce manifest version bump on PRs
     needs: [build-and-test]
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      issues: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
 
-      - name: Check for src changes without manifest version bump
+      - name: Fail if src changes without manifest version bump
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             const cp = require('child_process');
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const sha = process.env.GITHUB_SHA;
-            let before = context.payload.before;
-            const after = process.env.GITHUB_SHA;
-            // Guard against missing or all-zero before SHA. Try a fetch and fallbacks so git diff won't throw.
-            if (!before || /^0+$/.test(before)) {
-              core.info('Base SHA missing or zero; attempting git fetch to retrieve base commit');
-              try {
-                cp.execSync('git fetch origin --no-tags --prune --quiet', { encoding: 'utf8' });
-              } catch (e) {
-                core.info('git fetch failed (will try fallbacks)');
-              }
+            const pull_number = context.payload.pull_request.number;
+            const baseSha = context.payload.pull_request.base.sha;
+            const headSha = context.payload.pull_request.head.sha;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number,
+              per_page: 100
+            });
+            const changedFiles = files.flatMap(f => (
+              f.previous_filename ? [f.filename, f.previous_filename] : [f.filename]
+            ));
+            const srcChanged = changedFiles.some(f => f.startsWith('src/') && f !== 'src/manifest.json');
+            if (!srcChanged) {
+              core.info('No src/* changes outside src/manifest.json in this PR.');
+              return;
             }
-            let changed;
-            try {
-              // Prefer explicit range when before is available; otherwise compare against HEAD~1
-              const baseRef = before && !/^0+$/.test(before) ? before : `${after}~1`;
-              changed = cp.execSync(`git diff --name-only ${baseRef}..${after}`, { encoding: 'utf8' }).trim();
-            } catch (e) {
-              core.info('git diff failed; attempting fallback to HEAD~1 and then git ls-files');
-              try {
-                changed = cp.execSync(`git diff --name-only ${after}~1..${after}`, { encoding: 'utf8' }).trim();
-              } catch (e2) {
-                try {
-                  changed = cp.execSync('git ls-files', { encoding: 'utf8' }).trim();
-                } catch (e3) {
-                  core.info('git ls-files failed; assuming no changed files');
-                  changed = '';
-                }
-              }
-            }
-            const files = changed ? changed.split(/\r?\n/).filter(Boolean) : [];
-            const srcChanged = files.some(f => f.startsWith('src/') && f !== 'src/manifest.json');
             const readManifest = (rev) => {
               try {
                 return JSON.parse(cp.execSync(`git show ${rev}:src/manifest.json`, { encoding: 'utf8' }));
@@ -363,32 +348,132 @@ jobs:
                 return null;
               }
             };
-            // Resolve an effective baseRef (fall back to after~1 when before is missing/zero)
-            const baseRef = before && !/^0+$/.test(before) ? before : `${after}~1`;
-            const previousVersion = readManifest(baseRef)?.version;
-            const currentVersion = readManifest(after)?.version;
-            const versionBumped = previousVersion !== currentVersion;
-            if (!srcChanged) {
-              core.info(`No src/ changes in range ${baseRef}..${after}; nothing to do.`);
+            const previousVersion = readManifest(baseSha)?.version;
+            const currentVersion = readManifest(headSha)?.version;
+            if (!previousVersion || !currentVersion) {
+              core.setFailed('Unable to read src/manifest.json version from PR base/head commits.');
               return;
             }
-            if (versionBumped) {
-              core.info('Manifest version changed in this push; nothing to do.');
+            if (previousVersion === currentVersion) {
+              core.setFailed(`src/* changed without a manifest version bump (still ${currentVersion}).`);
               return;
             }
-            const title = 'Bug: [mint-auto] src/* changed without manifest version bump';
-            const issues = await github.paginate(github.rest.issues.listForRepo, {owner, repo, state: 'open'});
-            if (issues.some(i => !i.pull_request && i.title === title)) {
-              core.info('An open issue already exists; skipping creation.');
-              return;
-            }
-            const compareUrl = `https://github.com/${owner}/${repo}/compare/${baseRef}...${after}`;
-            const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
-            const body = `The pushed commits in range ${baseRef}..${after} updated files under src/ but did not update src/manifest.json version.\n\nCompare: ${compareUrl}\n\nLatest commit: ${commitUrl}\n\nPlease ensure the extension version in src/manifest.json is bumped when publishing changes.`;
-            await github.rest.issues.create({owner, repo, title, body, labels: ['ci']});
+            core.info(`Manifest version bumped: ${previousVersion} -> ${currentVersion}`);
 
   # ------------------------------------------------------------------
-  # JOB 5: Dependabot Auto-Approve
+  # JOB 6: Auto-release on main when manifest changes
+  # ------------------------------------------------------------------
+  release-on-manifest-change:
+    name: Auto release on manifest change
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Detect release eligibility
+        id: release-meta
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const fs = require('fs');
+            const cp = require('child_process');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const after = process.env.GITHUB_SHA;
+            let before = context.payload.before;
+            let changed = '';
+            const primaryBaseRef = before && !/^0+$/.test(before) ? before : `${after}~1`;
+            try {
+              changed = cp.execSync(`git diff --name-only ${primaryBaseRef}..${after}`, { encoding: 'utf8' }).trim();
+            } catch (err) {
+              console.error(`Primary git diff failed (baseRef=${primaryBaseRef}, before=${before}, after=${after}):`, err && err.stack ? err.stack : err);
+              try {
+                const fallbackBaseRef = `${after}~1`;
+                changed = cp.execSync(`git diff --name-only ${fallbackBaseRef}..${after}`, { encoding: 'utf8' }).trim();
+              } catch (err2) {
+                console.error(`Fallback git diff failed (after=${after}~1..${after}):`, err2 && err2.stack ? err2.stack : err2);
+                changed = '';
+              }
+            }
+            const files = changed ? changed.split(/\r?\n/).filter(Boolean) : [];
+            const manifestChanged = files.includes('src/manifest.json');
+            if (!manifestChanged) {
+              core.info('src/manifest.json was not changed in this push.');
+              core.setOutput('should_release', 'false');
+              return;
+            }
+            const manifest = JSON.parse(fs.readFileSync('src/manifest.json', 'utf8'));
+            const rawVersion = manifest.version;
+            if (rawVersion === undefined || rawVersion === null || `${rawVersion}`.trim() === '') {
+              core.setFailed('src/manifest.json version is missing or empty.');
+              return;
+            }
+            const version = `${rawVersion}`.trim();
+            const tag = version.startsWith('v') ? version : `v${version}`;
+            core.setOutput('tag', tag);
+            try {
+              await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+              core.info(`Release ${tag} already exists.`);
+              core.setOutput('should_release', 'false');
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Release ${tag} does not exist and will be created.`);
+                core.setOutput('should_release', 'true');
+                return;
+              }
+              throw error;
+            }
+
+      - name: Use Node.js 20.x
+        if: steps.release-meta.outputs.should_release == 'true'
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.release-meta.outputs.should_release == 'true'
+        run: npm ci
+
+      - name: Build extension
+        if: steps.release-meta.outputs.should_release == 'true'
+        run: npm run build -- --sourcemap
+
+      - name: Verify output
+        if: steps.release-meta.outputs.should_release == 'true'
+        run: |
+          for asset in build/extension.js build/min.extension.js build/pretty.extension.js build/extension.js.map; do
+            if [ ! -f "$asset" ]; then
+              echo "::error::Build failed: ${asset} not found"
+              exit 1
+            fi
+          done
+
+      - name: Prepare release assets
+        if: steps.release-meta.outputs.should_release == 'true'
+        id: release-assets
+        run: node scripts/prepare-release-assets.js
+
+      - name: Create release and upload assets
+        if: steps.release-meta.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release-meta.outputs.tag }}" \
+            "${{ steps.release-assets.outputs.pretty }}" \
+            "${{ steps.release-assets.outputs.min }}" \
+            "${{ steps.release-assets.outputs.sourcemap }}" \
+            --title "Release ${{ steps.release-meta.outputs.tag }}" \
+            --draft=false \
+            --generate-notes
+
+  # ------------------------------------------------------------------
+  # JOB 7: Dependabot Auto-Approve
   # ------------------------------------------------------------------
   dependabot-approve:
     name: Dependabot auto-approve

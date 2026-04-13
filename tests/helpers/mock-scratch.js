@@ -26,9 +26,12 @@ export function createScratchMock() {
     BlockType: {
       BOOLEAN: 'Boolean',
       COMMAND: 'command',
+      EVENT: 'event',
       HAT: 'hat',
       LOOP: 'loop',
       REPORTER: 'reporter',
+      BUTTON: 'button',
+      CONDITIONAL: 'conditional',
     },
     ArgumentType: {
       ANGLE: 'angle',

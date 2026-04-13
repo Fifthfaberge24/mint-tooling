@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@triflare/mint-tooling",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "A simple and painless custom TurboWarp extension development platform, powered by bundling.",
   "main": "build/extension.js",
   "scripts": {
@@ -37,8 +37,8 @@
     "extension-template",
     "turbowarp-extension"
   ],
-  "author": "",
-  "license": "SEE LICENSE IN LICENSE",
+  "author": "triflare",
+  "license": "GPL-3.0-only",
   "devDependencies": {
     "@eslint/js": "^10.0.0",
     "chokidar": "^5.0.0",

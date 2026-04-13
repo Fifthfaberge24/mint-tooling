@@ -104,6 +104,8 @@ describe('enhanced build report', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mint-build-report-assets-'));
     try {
       copyDir(REPO_ROOT, tempDir);
+      fs.mkdirSync(path.join(tempDir, 'src', 'assets'), { recursive: true });
+      fs.writeFileSync(path.join(tempDir, 'src', 'assets', 'tmp-test-file.txt'), '', 'utf8');
       try {
         fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(tempDir, 'node_modules'));
       } catch (_err) {
@@ -127,12 +129,15 @@ describe('enhanced build report', () => {
 
       const report = fs.readFileSync(path.join(tempDir, 'build', 'BUILD_REPORT.md'), 'utf8');
 
-      // The default template includes icons/block.png and icons/menu.png in src/assets/
       assert.ok(
         report.includes('## Embedded Assets'),
         'report should include Embedded Assets section when assets are present'
       );
-      assert.ok(report.includes('image/png'), 'Embedded Assets table should list MIME types');
+      assert.match(
+        report,
+        /`tmp-test-file\.txt`.*text\/plain|text\/plain.*`tmp-test-file\.txt`/s,
+        'Embedded Assets table should list tmp-test-file.txt with text/plain MIME type in the same row'
+      );
       assert.ok(
         report.includes('**Embedded assets:**'),
         'Summary should include embedded asset count'

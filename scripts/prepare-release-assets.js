@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 function main() {
   const manifestPath = path.join(process.cwd(), 'src', 'manifest.json');

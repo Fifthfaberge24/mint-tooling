@@ -1,10 +1,3 @@
-/**
- * Core Extension Module
- * This is the main extension class that Scratch will register
- * Load this first (01-* naming convention)
- */
-
-// Import colorBlock and sayHello from 02-example-module.js
 import { colorBlock, sayHelloImpl } from './02-example-module.js';
 
 class TurboWarpExtension {
@@ -12,10 +5,6 @@ class TurboWarpExtension {
     this.runtime = null;
   }
 
-  /**
-   * Return extension info for Scratch
-   * This method is required by the Scratch extension protocol
-   */
   getInfo() {
     return {
       id: 'myTurboWarpExtension',
@@ -72,34 +61,21 @@ class TurboWarpExtension {
     };
   }
 
-  /**
-   * Block implementation: Say Hello (delegates to 02-example-module.js)
-   */
   sayHello(args) {
     return sayHelloImpl(args);
   }
 
-  /**
-   * Block implementation: Hello World
-   */
   helloWorld() {
     return 'hello world!';
   }
 
-  /**
-   * Block implementation: Add
-   */
   add(args) {
     return Number(args.A) + Number(args.B);
   }
 
-  /**
-   * Block implementation: Color Block (delegates to 02-example-module.js)
-   */
   colorBlock(args) {
     return colorBlock(args);
   }
 }
 
-// Register the extension
 Scratch.extensions.register(new TurboWarpExtension());

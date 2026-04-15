@@ -10,7 +10,7 @@ TypeScript transpilation is handled by [`esbuild`](https://esbuild.github.io/). 
 npm install --save-dev esbuild
 ```
 
-> [!NOTE]
+> [!IMPORTANT]
 >
 > `esbuild` performs **type stripping only** — it does not type-check your code. Run `tsc --noEmit` (with a `tsconfig.json`) separately if you want compile-time type errors.
 
@@ -18,7 +18,7 @@ npm install --save-dev esbuild
 
 Create `.ts` files in `src/` following the same naming convention as `.js` files:
 
-```
+```text
 src/
   01-core.ts
   02-helpers.ts

@@ -2,7 +2,7 @@
 
 A typical Mint project looks like this:
 
-```
+```text
 my-extension/
   src/
     01-core.js            # Extension class and getInfo()

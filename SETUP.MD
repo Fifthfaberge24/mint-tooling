@@ -31,6 +31,6 @@ npm run test
 npm run update:mint # you can also pass --dry-run
 ```
 
-## 5. Start Coding!
+## 5. Start Coding
 
 You're done with initial setup -- you can now start coding your extension, and Mint will keep up with you as you do!

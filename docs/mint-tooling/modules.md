@@ -59,7 +59,7 @@ class MyExtension {
 
 The bundler removes the `import` line and the `export` keyword, so both modules end up as plain JavaScript inside the same IIFE scope. Even though `01-core.js` sorts before `02-math.js` and therefore appears earlier in the bundle, the `add` function is still available when a block method calls it at runtime — method bodies do not execute until a block is triggered, by which point the entire bundle has already been parsed and all functions are defined. As long as you do not call an imported function at module load time (outside any method), the ordering is fine.
 
-> [!NOTE]
+> [!TIP]
 >
 > If you do need a helper to run at load time — for example, to set up some state when the extension is first registered — put that code inside the class constructor or make sure the helper is defined in a file that sorts earlier than the file calling it.
 

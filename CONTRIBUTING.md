@@ -101,7 +101,7 @@ npm run test:watch
 
 Place your test files in the `tests/` directory using the `.test.js` suffix:
 
-```
+```text
 tests/
   helpers/
     mock-scratch.js   # Scratch environment mock (provided)

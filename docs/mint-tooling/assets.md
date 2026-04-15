@@ -63,7 +63,7 @@ if (mint.assets.exists('icons/overlay.png')) {
 }
 ```
 
-> [!NOTE]
+> [!TIP]
 >
 > Both `mint.assets.get()` and `mint.assets.exists()` are runtime functions injected by the bundler. They look up assets from an embedded map that is generated at build time. The `mint` object is always present in the bundle (it returns `undefined` / `false` when the `src/assets/` directory is absent or empty).
 

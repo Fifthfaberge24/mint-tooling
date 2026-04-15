@@ -121,7 +121,7 @@ TypeScript (`.ts`) files are transpiled to JavaScript by `esbuild` before the ab
 
 The `Scratch` global is passed as a parameter rather than accessed directly. This matches TurboWarp's sandboxed extension loading model.
 
-> [!NOTE]
+> [!IMPORTANT]
 >
 > Because imports are removed and exports are inlined, every symbol you export from a module is automatically available to any module that appears later in the bundle. You do not need to change anything — just use `export function` / `export const` and `import ... from '...'` and the bundler handles the rest. For forms that are not supported, see [Modules — What you cannot do](./modules.md#what-you-cannot-do).
 

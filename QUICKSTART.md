@@ -16,7 +16,7 @@ You can get your extension up in a few minutes!
 
 It's that simple!
 
-# Local Preview Server (faster iteration)
+## Local Preview Server (faster iteration)
 
 Instead of copying and pasting the built extension on every change, you can run a local HTTP server that lets TurboWarp reload the extension directly from your machine.
 
@@ -43,13 +43,13 @@ Instead of copying and pasting the built extension on every change, you can run 
 > PORT=8080 npm run serve
 > ```
 
-# Build Your Extension
+## Build Your Extension
 
 > [!INFO]
 >
 > We have since removed this section to remove the overhead of updating this field if TurboWarp's extension system changes. **If you want guidance, see [TurboWarp's documentation](https://docs.turbowarp.org/development/extensions/introduction).**
 
-# Choosing the Right Build Output
+## Choosing the Right Build Output
 
 Every successful build produces at least `build/extension.js` and a `build/BUILD_REPORT.md` that summarises the available artifacts. When optional tools are installed, additional variants may be created:
 

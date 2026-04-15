@@ -11,9 +11,9 @@ The `init` script walks you through a short interactive prompt, then makes the f
 - Writes a fresh `src/manifest.json` with your extension's metadata.
 - Prepends an initialization comment header to `src/01-core.js`.
 
-> [!WARNING]
+> [!CAUTION]
 >
-> **Destructive Operation**: Running `npm run init` (via `scaffoldTemplate()`) will delete and replace your existing `src/` directory. Any uncommitted changes in `src/` will be lost. Rerunning `npm run init` is destructive.
+> Running `npm run init` (via `scaffoldTemplate()`) will delete and replace your existing `src/` directory. Any uncommitted changes in `src/` will be lost. Rerunning `npm run init` is destructive.
 
 ## Running it
 

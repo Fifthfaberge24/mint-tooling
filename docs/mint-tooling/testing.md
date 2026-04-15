@@ -79,7 +79,8 @@ The `installScratchMock` helper sets `globalThis.Scratch` to a minimal stub that
 ## Test file layout
 
 Place test files in `tests/` with the `.test.js` suffix:
-``text
+
+```text
 tests/
 helpers/
 mock-scratch.js # Provided — do not delete
@@ -88,7 +89,6 @@ mock-scratch.js # Provided — do not delete
 mint-tooling/
 update-mint.test.js
 build-\*.test.js
-
 ```
 
 Subdirectories are fine and the runner will find test files anywhere in the tree as long as they end in `.test.js`.
@@ -96,4 +96,3 @@ Subdirectories are fine and the runner will find test files anywhere in the tree
 ## A note on module loading order
 
 Because `01-core.js` uses a top-level `Scratch.extensions.register()` call, the mock must be installed before Node loads that file. The `await import(...)` at the top level of the test file handles this: it defers the module load until after your setup code has run. This is why a dynamic `import()` is used instead of a static `import` statement.
-```

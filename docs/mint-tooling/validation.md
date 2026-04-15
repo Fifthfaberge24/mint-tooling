@@ -18,19 +18,19 @@ This scans each top-level `.js` file in `src/` for `opcode: '...'` patterns and 
 
 If you add a block to `getInfo()` but forget to implement the method:
 
-```
+```text
   ✗ [01-core.js] Block opcode 'myNewBlock' has no corresponding implementation method in the extension class.
 ```
 
 If your block text references an argument that is not declared:
 
-```
+```text
   ✗ [01-core.js] Block 'greet': argument '[GREETING]' is referenced in block text but not declared in arguments.
 ```
 
 If you declare an argument but never use it in the block text:
 
-```
+```text
   ✗ [01-core.js] Block 'greet': argument 'GREETING' is declared in arguments but not referenced in block text.
 ```
 
@@ -52,23 +52,23 @@ npm run validate:assets
 
 This checks that every `__ASSET__('path')` call in top-level `.js` files directly under `src/` (it does not recurse into subdirectories) resolves to an actual file under `src/assets/`. It also warns about files in `src/assets/` that are not referenced anywhere by those scanned files.
 
-### What it catches
+### Examples
 
 A missing asset file:
 
-```
+```text
   ✗ [01-core.js] __ASSET__('icons/menu.png') — file not found: src/assets/icons/menu.png
 ```
 
 A path traversal attempt (for example `__ASSET__('../secret.txt')`):
 
-```
+```text
   ✗ [01-core.js] __ASSET__('../secret.txt') — invalid path (traversal detected)
 ```
 
 An unreferenced asset (warning, not an error):
 
-```
+```text
   ⚠ Asset not referenced in any source file: src/assets/old-icon.png
 ```
 

